@@ -41,7 +41,11 @@ class _PrayerTimeState extends State<PrayerTime> {
         builder: (context, AsyncSnapshot<PrayerTimeModel> snapshot) {
           if (snapshot.hasData) {
             return CarouselSlider(
-              options: CarouselOptions(height: 200.0),
+              options: CarouselOptions(
+                height: 200.0,
+                autoPlay: true,
+                autoPlayInterval: const Duration(seconds: 4),
+              ),
               items: snapshot.data!.data[DateTime.now().day - 1].timings
                   .toMap()
                   .entries
