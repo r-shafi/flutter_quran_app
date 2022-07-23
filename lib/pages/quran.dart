@@ -101,6 +101,13 @@ class _QuranState extends State<Quran> {
   }
 
   @override
+  void dispose() {
+    player.stop();
+    player.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
