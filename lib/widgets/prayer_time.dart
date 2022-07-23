@@ -85,11 +85,14 @@ class _PrayerTimeState extends State<PrayerTime> {
           } else if (snapshot.hasError) {
             return Text("${snapshot.error}");
           } else {
-            return const Center(
-                child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: CircularProgressIndicator(),
-            ));
+            return const SizedBox(
+              height: 210.0,
+              child: Center(
+                  child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: CircularProgressIndicator(),
+              )),
+            );
           }
         });
   }
