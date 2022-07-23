@@ -55,10 +55,9 @@ class _PrayerTimeState extends State<PrayerTime> {
                     return Container(
                       width: MediaQuery.of(context).size.width,
                       margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.withOpacity(.3),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(10.0)),
+                      decoration: const BoxDecoration(
+                        color: Colors.deepOrangeAccent,
+                        borderRadius: BorderRadius.all(Radius.circular(10.0)),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Column(
