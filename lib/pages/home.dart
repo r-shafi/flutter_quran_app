@@ -19,7 +19,7 @@ class Home extends StatelessWidget {
             const PrayerTime(),
             Container(
               margin: const EdgeInsets.symmetric(vertical: 15),
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               width: double.infinity,
               child: GestureDetector(
                 onTap: () {
