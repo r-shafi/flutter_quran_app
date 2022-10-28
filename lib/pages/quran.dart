@@ -169,6 +169,11 @@ class _QuranState extends State<Quran> {
               itemCount: snapshot.data!.data.length,
               itemBuilder: (context, index) {
                 return ListTile(
+                  tileColor: lastTrack == index + 1
+                      ? Colors.deepOrange
+                      : index % 2 == 0
+                          ? Colors.black26
+                          : Colors.black12,
                   title: Text(snapshot.data!.data[index].englishName),
                   subtitle: Text(snapshot.data!.data[index].name),
                   trailing: IconButton(
