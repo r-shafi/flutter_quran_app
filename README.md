@@ -11,3 +11,7 @@ All of the data used in this app comes from public API's.
 - Store fetched surah's list locally
 - Download surah's audio
 - Media control from notification bar
+
+## Todo
+
+- Pick Voice - https://api.alquran.cloud/v1/edition/format/audio
