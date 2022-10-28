@@ -21,7 +21,7 @@ Future<SurahListModel> fetchSurahList() async {
 
 Future<SurahContentModel> fetchSurahContent(int id) async {
   final response = await http.get(
-    Uri.parse('http://api.alquran.cloud/v1/surah/$id/ar.alafasy'),
+    Uri.parse('http://api.alquran.cloud/v1/surah/$id/ar.ahmedajamy'),
   );
 
   if (response.statusCode == 200) {
@@ -110,6 +110,38 @@ class _QuranState extends State<Quran> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: BottomAppBar(
+        child: isPlaying || lastTrack != 0
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      player.seekToPrevious();
+                    },
+                    icon: const Icon(Icons.skip_previous),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      player.playing ? player.pause() : player.play();
+                      setState(() {
+                        isPlaying = !isPlaying;
+                      });
+                    },
+                    icon: Icon(
+                      isPlaying ? Icons.pause : Icons.play_arrow,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      player.seekToNext();
+                    },
+                    icon: const Icon(Icons.skip_next),
+                  ),
+                ],
+              )
+            : null,
+      ),
       appBar: AppBar(
         title: const Text('Quran Audio'),
       ),
@@ -118,22 +150,23 @@ class _QuranState extends State<Quran> {
         builder: (context, AsyncSnapshot<SurahListModel> snapshot) {
           if (snapshot.hasData) {
             return ListView(
-                children: snapshot.data!.data
-                    .map(
-                      (surah) => ListTile(
-                        title: Text(surah.englishName),
-                        subtitle: Text(surah.name),
-                        trailing: IconButton(
-                          icon: isPlaying && lastTrack == surah.number
-                              ? const Icon(Icons.pause)
-                              : const Icon(Icons.play_arrow),
-                          onPressed: () {
-                            audioPlaybackController(surah.number);
-                          },
-                        ),
+              children: snapshot.data!.data
+                  .map(
+                    (surah) => ListTile(
+                      title: Text(surah.englishName),
+                      subtitle: Text(surah.name),
+                      trailing: IconButton(
+                        icon: isPlaying && lastTrack == surah.number
+                            ? const Icon(Icons.pause)
+                            : const Icon(Icons.play_arrow),
+                        onPressed: () {
+                          audioPlaybackController(surah.number);
+                        },
                       ),
-                    )
-                    .toList());
+                    ),
+                  )
+                  .toList(),
+            );
           } else if (snapshot.hasError) {
             return Center(
               child: Text('${snapshot.error}'),
