@@ -160,6 +160,7 @@ class _QuranState extends State<Quran> {
       ),
       appBar: AppBar(
         title: const Text('Quran Audio'),
+        centerTitle: true,
       ),
       body: FutureBuilder(
         future: _futureSurahList,
