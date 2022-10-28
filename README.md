@@ -6,12 +6,10 @@ All of the data used in this app comes from public API's.
 
 ## Possible Feature Upgrades
 
-- Notification for prayer times
-- Location select for prayer times
-- Store fetched surah's list locally
-- Download surah's audio
-- Media control from notification bar
-
-## Todo
-
-- Pick Voice - https://api.alquran.cloud/v1/edition/format/audio
+- [ ] Notification for prayer times
+- [ ] Location select for prayer times
+- [x] Store fetched surah's list locally
+- [ ] Download surah's audio
+- [ ] Media control from notification bar
+- [ ] Add surah's to favorites
+- [ ] Pick Ka'ri Voice (https://api.alquran.cloud/v1/edition/format/audio)
