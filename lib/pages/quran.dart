@@ -117,6 +117,14 @@ class _QuranState extends State<Quran> {
                 children: [
                   IconButton(
                     onPressed: () {
+                      if (lastTrack > 1) {
+                        audioPlaybackController(lastTrack - 1);
+                      }
+                    },
+                    icon: const Icon(Icons.skip_previous_outlined),
+                  ),
+                  IconButton(
+                    onPressed: () {
                       player.seekToPrevious();
                     },
                     icon: const Icon(Icons.skip_previous),
@@ -138,6 +146,14 @@ class _QuranState extends State<Quran> {
                     },
                     icon: const Icon(Icons.skip_next),
                   ),
+                  IconButton(
+                    onPressed: () {
+                      if (lastTrack < 114) {
+                        audioPlaybackController(lastTrack + 1);
+                      }
+                    },
+                    icon: const Icon(Icons.skip_next_outlined),
+                  ),
                 ],
               )
             : null,
@@ -149,23 +165,28 @@ class _QuranState extends State<Quran> {
         future: _futureSurahList,
         builder: (context, AsyncSnapshot<SurahListModel> snapshot) {
           if (snapshot.hasData) {
-            return ListView(
-              children: snapshot.data!.data
-                  .map(
-                    (surah) => ListTile(
-                      title: Text(surah.englishName),
-                      subtitle: Text(surah.name),
-                      trailing: IconButton(
-                        icon: isPlaying && lastTrack == surah.number
-                            ? const Icon(Icons.pause)
-                            : const Icon(Icons.play_arrow),
-                        onPressed: () {
-                          audioPlaybackController(surah.number);
-                        },
-                      ),
+            return ListView.builder(
+              itemCount: snapshot.data!.data.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(snapshot.data!.data[index].englishName),
+                  subtitle: Text(snapshot.data!.data[index].name),
+                  trailing: IconButton(
+                    onPressed: () {
+                      audioPlaybackController(
+                        snapshot.data!.data[index].number,
+                      );
+                    },
+                    icon: Icon(
+                      lastTrack == snapshot.data!.data[index].number
+                          ? isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow
+                          : Icons.play_arrow,
                     ),
-                  )
-                  .toList(),
+                  ),
+                );
+              },
             );
           } else if (snapshot.hasError) {
             return Center(
