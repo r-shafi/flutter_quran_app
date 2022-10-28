@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quran_app/pages/quran.dart';
+import 'package:quran_app/widgets/drawer.dart';
 import 'package:quran_app/widgets/prayer_time.dart';
 
 class Home extends StatelessWidget {
@@ -8,6 +9,7 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: SettingsDrawer(),
       appBar: AppBar(
         title: const Text('Quran App'),
         centerTitle: true,
