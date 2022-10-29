@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:quran_app/models/audio_list.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<AudioListModel> fetchVoiceList() async {
   final response = await http.get(
@@ -25,6 +26,8 @@ class VoicePicker extends StatefulWidget {
 }
 
 class _VoicePickerState extends State<VoicePicker> {
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+
   late Future<AudioListModel> _futureVoiceList;
   final player = AudioPlayer();
 
@@ -34,6 +37,11 @@ class _VoicePickerState extends State<VoicePicker> {
   void initState() {
     super.initState();
     _futureVoiceList = fetchVoiceList();
+    _prefs.then((SharedPreferences prefs) {
+      setState(() {
+        selectedVoice = prefs.getString('selectedVoice') ?? '';
+      });
+    });
   }
 
   @override
@@ -58,6 +66,10 @@ class _VoicePickerState extends State<VoicePicker> {
 
     setState(() {
       selectedVoice = identifier;
+    });
+
+    _prefs.then((SharedPreferences prefs) {
+      prefs.setString('selectedVoice', identifier);
     });
 
     try {
