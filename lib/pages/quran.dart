@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import './../models/surah_content.dart';
 import './../models/surah_list.dart';
+
+Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
 Future<SurahListModel> fetchSurahList() async {
   final response = await http.get(
@@ -20,8 +23,12 @@ Future<SurahListModel> fetchSurahList() async {
 }
 
 Future<SurahContentModel> fetchSurahContent(int id) async {
+  String voice = await _prefs.then((SharedPreferences prefs) {
+    return prefs.getString('selectedVoice') ?? 'ar.ahmedajamy';
+  });
+
   final response = await http.get(
-    Uri.parse('http://api.alquran.cloud/v1/surah/$id/ar.ahmedajamy'),
+    Uri.parse('http://api.alquran.cloud/v1/surah/$id/$voice'),
   );
 
   if (response.statusCode == 200) {
