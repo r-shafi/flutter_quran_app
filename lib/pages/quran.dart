@@ -23,7 +23,6 @@ Future<SurahListModel> fetchSurahList() async {
   );
 
   if (response.statusCode == 200) {
-    final SharedPreferences prefs = await _prefs;
     prefs.setString('surahList', response.body);
     return SurahListModel.fromMap(json.decode(response.body));
   } else {
