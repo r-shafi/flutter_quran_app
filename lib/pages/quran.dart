@@ -11,11 +11,20 @@ import './../models/surah_list.dart';
 Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
 Future<SurahListModel> fetchSurahList() async {
+  final SharedPreferences prefs = await _prefs;
+  final String? surahList = prefs.getString('surahList');
+
+  if (surahList != null) {
+    return SurahListModel.fromMap(jsonDecode(surahList));
+  }
+
   final response = await http.get(
     Uri.parse('http://api.alquran.cloud/v1/surah'),
   );
 
   if (response.statusCode == 200) {
+    final SharedPreferences prefs = await _prefs;
+    prefs.setString('surahList', response.body);
     return SurahListModel.fromMap(json.decode(response.body));
   } else {
     throw Exception('Failed to load data!');
