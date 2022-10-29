@@ -18,6 +18,7 @@ class SettingsDrawer extends StatelessWidget {
             ),
           ),
           ListTile(
+            leading: const Icon(Icons.record_voice_over),
             title: const Text('Select Voice'),
             onTap: () {
               Navigator.push(
@@ -29,6 +30,7 @@ class SettingsDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.color_lens),
             title: const Text('Select Theme'),
             onTap: () {
               Navigator.pushNamed(context, '/theme');
