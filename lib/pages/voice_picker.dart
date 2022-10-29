@@ -43,11 +43,28 @@ class _VoicePickerState extends State<VoicePicker> {
         future: _futureVoiceList,
         builder: ((context, AsyncSnapshot<AudioListModel> snapshot) {
           if (snapshot.hasData) {
-            return GridView.count(
-              crossAxisCount: 2,
-              children: snapshot.data!.data.map((e) {
-                return Text(e.englishName);
-              }).toList(),
+            return Padding(
+              padding: const EdgeInsets.all(10),
+              child: GridView.count(
+                crossAxisCount: 2,
+                childAspectRatio: 16 / 5,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                children: snapshot.data!.data.map((e) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        e.englishName,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             );
           } else if (snapshot.hasError) {
             return Text('${snapshot.error}');
