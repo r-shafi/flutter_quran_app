@@ -12,4 +12,4 @@ All of the data used in this app comes from public API's.
 - [ ] Download surah's audio
 - [ ] Media control from notification bar
 - [ ] Add surah's to favorites
-- [ ] Pick Ka'ri Voice (https://api.alquran.cloud/v1/edition/format/audio)
+- [x] Pick Ka'ri Voice
