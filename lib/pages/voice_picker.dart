@@ -6,12 +6,22 @@ import 'package:just_audio/just_audio.dart';
 import 'package:quran_app/models/audio_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+
 Future<AudioListModel> fetchVoiceList() async {
+  final SharedPreferences prefs = await _prefs;
+  final String? voiceList = prefs.getString('voiceList');
+
+  if (voiceList != null) {
+    return AudioListModel.fromJson(jsonDecode(voiceList));
+  }
+
   final response = await http.get(
     Uri.parse('https://api.alquran.cloud/v1/edition/format/audio'),
   );
 
   if (response.statusCode == 200) {
+    prefs.setString('voiceList', response.body);
     return AudioListModel.fromJson(json.decode(response.body));
   } else {
     throw Exception('Failed to load data!');
