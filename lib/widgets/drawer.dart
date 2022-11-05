@@ -10,10 +10,15 @@ class SettingsDrawer extends StatelessWidget {
       child: ListView(
         children: [
           const DrawerHeader(
-            child: Text(
-              'Settings',
-              style: TextStyle(
-                fontSize: 30,
+            decoration: BoxDecoration(
+              color: Colors.deepOrange,
+            ),
+            child: Center(
+              child: Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 30,
+                ),
               ),
             ),
           ),
@@ -32,9 +37,7 @@ class SettingsDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.color_lens),
             title: const Text('Select Theme'),
-            onTap: () {
-              Navigator.pushNamed(context, '/theme');
-            },
+            onTap: () {},
           ),
         ],
       ),
