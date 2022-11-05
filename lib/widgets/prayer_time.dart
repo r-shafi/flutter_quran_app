@@ -37,62 +37,67 @@ class _PrayerTimeState extends State<PrayerTime> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-        future: _futurePrayerTime,
-        builder: (context, AsyncSnapshot<PrayerTimeModel> snapshot) {
-          if (snapshot.hasData) {
-            return CarouselSlider(
-              options: CarouselOptions(
-                height: 200.0,
-                autoPlay: true,
-                autoPlayInterval: const Duration(seconds: 4),
-              ),
-              items: snapshot.data!.data[DateTime.now().day - 1].timings
-                  .toMap()
-                  .entries
-                  .map((entry) {
-                return Builder(
-                  builder: (BuildContext context) {
-                    return Container(
-                      width: MediaQuery.of(context).size.width,
-                      margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                      decoration: const BoxDecoration(
-                        color: Colors.deepOrangeAccent,
-                        borderRadius: BorderRadius.all(Radius.circular(10.0)),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key.toUpperCase(),
-                            style:
-                                const TextStyle(fontSize: 25, letterSpacing: 1),
+      future: _futurePrayerTime,
+      builder: (context, AsyncSnapshot<PrayerTimeModel> snapshot) {
+        if (snapshot.hasData) {
+          return CarouselSlider(
+            options: CarouselOptions(
+              height: 200.0,
+              autoPlay: true,
+              autoPlayInterval: const Duration(seconds: 4),
+            ),
+            items: snapshot.data!.data[DateTime.now().day - 1].timings
+                .toMap()
+                .entries
+                .map((entry) {
+              return Builder(
+                builder: (BuildContext context) {
+                  return Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                    decoration: const BoxDecoration(
+                      color: Colors.deepOrangeAccent,
+                      borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.key.toUpperCase(),
+                          style:
+                              const TextStyle(fontSize: 25, letterSpacing: 1),
+                        ),
+                        Text(
+                          DateFormat('hh:mm a').format(
+                            DateTime.parse(
+                              '0000-00-00 ${entry.value.toString().split(' ')[0]}:00',
+                            ),
                           ),
-                          Text(
-                            DateFormat('hh:mm a').format(DateTime.parse(
-                                '0000-00-00 ${entry.value.toString().split(' ')[0]}:00')),
-                            style: const TextStyle(fontSize: 35.0),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              }).toList(),
-            );
-          } else if (snapshot.hasError) {
-            return Text("${snapshot.error}");
-          } else {
-            return const SizedBox(
-              height: 210.0,
-              child: Center(
-                  child: Padding(
+                          style: const TextStyle(fontSize: 35.0),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          );
+        } else if (snapshot.hasError) {
+          return Text("${snapshot.error}");
+        } else {
+          return const SizedBox(
+            height: 210.0,
+            child: Center(
+              child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: CircularProgressIndicator(),
-              )),
-            );
-          }
-        });
+              ),
+            ),
+          );
+        }
+      },
+    );
   }
 }
