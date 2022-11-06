@@ -11,7 +11,7 @@ class SettingsDrawer extends StatelessWidget {
         children: [
           const DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.deepOrange,
+              color: Colors.pink,
             ),
             child: Center(
               child: Text(
