@@ -11,8 +11,8 @@ class App extends StatelessWidget {
     return MaterialApp(
       home: const Home(),
       theme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.deepOrange,
+        brightness: Brightness.light,
+        primarySwatch: Colors.pink,
       ),
     );
   }
