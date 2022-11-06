@@ -184,26 +184,36 @@ class _QuranState extends State<Quran> {
             return ListView.builder(
               itemCount: snapshot.data!.data.length,
               itemBuilder: (context, index) {
-                return ListTile(
-                  tileColor: lastTrack == index + 1
-                      ? Colors.deepOrange
-                      : index % 2 == 0
-                          ? Colors.black26
-                          : Colors.black12,
-                  title: Text(snapshot.data!.data[index].englishName),
-                  subtitle: Text(snapshot.data!.data[index].name),
-                  trailing: IconButton(
-                    onPressed: () {
-                      audioPlaybackController(
-                        snapshot.data!.data[index].number,
-                      );
-                    },
-                    icon: Icon(
-                      lastTrack == snapshot.data!.data[index].number
-                          ? isPlaying
-                              ? Icons.pause
-                              : Icons.play_arrow
-                          : Icons.play_arrow,
+                return Padding(
+                  padding: const EdgeInsets.only(
+                    top: 8.0,
+                    left: 8.0,
+                    right: 8.0,
+                  ),
+                  child: ListTile(
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(10),
+                      ),
+                    ),
+                    tileColor: lastTrack == index + 1
+                        ? Colors.pink
+                        : Colors.black12.withOpacity(0.05),
+                    title: Text(snapshot.data!.data[index].englishName),
+                    subtitle: Text(snapshot.data!.data[index].name),
+                    trailing: IconButton(
+                      onPressed: () {
+                        audioPlaybackController(
+                          snapshot.data!.data[index].number,
+                        );
+                      },
+                      icon: Icon(
+                        lastTrack == snapshot.data!.data[index].number
+                            ? isPlaying
+                                ? Icons.pause
+                                : Icons.play_arrow
+                            : Icons.play_arrow,
+                      ),
                     ),
                   ),
                 );
