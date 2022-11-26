@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quran_app/pages/location_setter.dart';
 import 'package:quran_app/pages/voice_picker.dart';
 
 class SettingsDrawer extends StatelessWidget {
@@ -30,6 +31,18 @@ class SettingsDrawer extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const VoicePicker(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.mosque),
+            title: const Text('Set Location'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LocationSetter(),
                 ),
               );
             },
