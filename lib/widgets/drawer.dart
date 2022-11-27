@@ -42,7 +42,7 @@ class SettingsDrawer extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const LocationSetter(),
+                  builder: (context) => LocationSetter(),
                 ),
               );
             },
