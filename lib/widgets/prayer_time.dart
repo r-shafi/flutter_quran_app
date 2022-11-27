@@ -4,12 +4,25 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import './../models/prayer_time.dart';
 
+Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+
 Future<PrayerTimeModel> fetchPrayerTime() async {
-  final response = await http.get(Uri.parse(
-      'https://api.aladhan.com/v1/hijriCalendarByCity?city=Sylhet&country=Bangladesh'));
+  String city = await _prefs.then((SharedPreferences prefs) {
+    return prefs.getString('city') ?? 'London';
+  });
+  String country = await _prefs.then((SharedPreferences prefs) {
+    return prefs.getString('country') ?? 'England';
+  });
+
+  final response = await http.get(
+    Uri.parse(
+      'https://api.aladhan.com/v1/hijriCalendarByCity?city=$city&country=$country',
+    ),
+  );
 
   if (response.statusCode == 200) {
     return PrayerTimeModel.fromMap(json.decode(response.body));
