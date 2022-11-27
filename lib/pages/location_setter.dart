@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class LocationSetter extends StatelessWidget {
+class LocationSetter extends StatefulWidget {
   LocationSetter({Key? key}) : super(key: key);
+
+  @override
+  State<LocationSetter> createState() => _LocationSetterState();
+}
+
+class _LocationSetterState extends State<LocationSetter> {
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _prefs.then((SharedPreferences prefs) {
+      if (prefs.getString('city') != null) {
+        _cityController.text = prefs.getString('city')!;
+      }
+      if (prefs.getString('country') != null) {
+        _countryController.text = prefs.getString('country')!;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,15 +58,27 @@ class LocationSetter extends StatelessWidget {
                   ),
                   controller: _countryController,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 const Text(
                   'Note: the city used may not work if the data for that particular city does not exist in server. In that case please try again with the closest city.',
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () {
-                    print(_cityController.text);
-                    print(_countryController.text);
+                    if (_cityController.text.isNotEmpty &&
+                        _countryController.text.isNotEmpty) {
+                      _prefs.then((SharedPreferences prefs) {
+                        prefs.setString('city', _cityController.text);
+                        prefs.setString('country', _countryController.text);
+                      });
+                      Navigator.pop(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter city and country'),
+                        ),
+                      );
+                    }
                   },
                   child: const Text('Set Location'),
                 ),
