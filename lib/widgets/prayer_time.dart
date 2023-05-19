@@ -79,8 +79,11 @@ class _PrayerTimeState extends State<PrayerTime> {
                       children: [
                         Text(
                           entry.key.toUpperCase(),
-                          style:
-                              const TextStyle(fontSize: 25, letterSpacing: 1),
+                          style: const TextStyle(
+                            fontSize: 25,
+                            letterSpacing: 1,
+                            color: Colors.white,
+                          ),
                         ),
                         Text(
                           DateFormat('hh:mm a').format(
@@ -88,7 +91,10 @@ class _PrayerTimeState extends State<PrayerTime> {
                               '0000-00-00 ${entry.value.toString().split(' ')[0]}:00',
                             ),
                           ),
-                          style: const TextStyle(fontSize: 35.0),
+                          style: const TextStyle(
+                            fontSize: 35.0,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),

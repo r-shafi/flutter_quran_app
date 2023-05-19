@@ -133,6 +133,11 @@ class _VoicePickerState extends State<VoicePicker> {
                         child: Text(
                           voice.englishName,
                           textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: selectedVoice == voice.identifier
+                                ? Colors.white
+                                : Colors.black,
+                          ),
                         ),
                       ),
                     ),

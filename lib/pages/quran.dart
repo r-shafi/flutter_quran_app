@@ -199,8 +199,22 @@ class _QuranState extends State<Quran> {
                     tileColor: lastTrack == index + 1
                         ? Colors.pink
                         : Colors.black12.withOpacity(0.05),
-                    title: Text(snapshot.data!.data[index].englishName),
-                    subtitle: Text(snapshot.data!.data[index].name),
+                    title: Text(
+                      snapshot.data!.data[index].englishName,
+                      style: TextStyle(
+                        color: lastTrack == index + 1
+                            ? Colors.white
+                            : Colors.black,
+                      ),
+                    ),
+                    subtitle: Text(
+                      snapshot.data!.data[index].name,
+                      style: TextStyle(
+                        color: lastTrack == index + 1
+                            ? Colors.white
+                            : Colors.black,
+                      ),
+                    ),
                     trailing: IconButton(
                       onPressed: () {
                         audioPlaybackController(
@@ -213,6 +227,7 @@ class _QuranState extends State<Quran> {
                                 ? Icons.pause
                                 : Icons.play_arrow
                             : Icons.play_arrow,
+                        color: lastTrack == index + 1 ? Colors.white : null,
                       ),
                     ),
                   ),
