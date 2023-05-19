@@ -12,10 +12,10 @@ Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
 Future<PrayerTimeModel> fetchPrayerTime() async {
   String city = await _prefs.then((SharedPreferences prefs) {
-    return prefs.getString('city') ?? 'London';
+    return prefs.getString('city') ?? 'Sylhet';
   });
   String country = await _prefs.then((SharedPreferences prefs) {
-    return prefs.getString('country') ?? 'England';
+    return prefs.getString('country') ?? 'Bangladesh';
   });
 
   final response = await http.get(
