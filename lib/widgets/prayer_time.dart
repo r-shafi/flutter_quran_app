@@ -68,9 +68,15 @@ class _PrayerTimeState extends State<PrayerTime> {
                   return Container(
                     width: MediaQuery.of(context).size.width,
                     margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                    decoration: const BoxDecoration(
-                      color: Colors.blueGrey,
-                      borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                    decoration: BoxDecoration(
+                      // color: Colors.blueGrey,
+                      image: DecorationImage(
+                        image: AssetImage('assets/images/${entry.key}.jpg'),
+                        fit: BoxFit.cover,
+                      ),
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(10.0),
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
@@ -83,6 +89,12 @@ class _PrayerTimeState extends State<PrayerTime> {
                             fontSize: 25,
                             letterSpacing: 1,
                             color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 25.0,
+                                color: Colors.black,
+                              ),
+                            ],
                           ),
                         ),
                         Text(
@@ -94,6 +106,12 @@ class _PrayerTimeState extends State<PrayerTime> {
                           style: const TextStyle(
                             fontSize: 35.0,
                             color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 25.0,
+                                color: Colors.black,
+                              ),
+                            ],
                           ),
                         ),
                       ],
