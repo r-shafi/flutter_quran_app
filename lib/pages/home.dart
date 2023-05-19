@@ -9,7 +9,7 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: const SettingsDrawer(),
+      drawer: const SafeArea(child: SettingsDrawer()),
       appBar: AppBar(
         title: const Text('Quran App'),
         centerTitle: true,
