@@ -197,7 +197,7 @@ class _QuranState extends State<Quran> {
                       ),
                     ),
                     tileColor: lastTrack == index + 1
-                        ? Colors.pink
+                        ? Colors.blueGrey
                         : Colors.black12.withOpacity(0.05),
                     title: Text(
                       snapshot.data!.data[index].englishName,

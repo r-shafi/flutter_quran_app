@@ -89,7 +89,7 @@ class _VoicePickerState extends State<VoicePicker> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          backgroundColor: Colors.pink,
+          backgroundColor: Colors.blueGrey,
           content: Text(
             'Something went wrong! Try Selecting Another Voice',
           ),
@@ -125,7 +125,7 @@ class _VoicePickerState extends State<VoicePicker> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: selectedVoice == voice.identifier
-                            ? Colors.pink
+                            ? Colors.blueGrey
                             : Colors.black12,
                         borderRadius: BorderRadius.circular(10),
                       ),

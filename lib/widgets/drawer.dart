@@ -12,13 +12,13 @@ class SettingsDrawer extends StatelessWidget {
         children: [
           const DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.pink,
+              color: Colors.blueGrey,
             ),
             child: Center(
               child: Text(
-                'Settings',
+                'MADE WITH 🤍 BY SHAFI RAYHAN',
                 style: TextStyle(
-                  fontSize: 30,
+                  color: Colors.white,
                 ),
               ),
             ),
