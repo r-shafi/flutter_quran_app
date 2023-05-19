@@ -60,7 +60,7 @@ class _LocationSetterState extends State<LocationSetter> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Note: the city used may not work if the data for that particular city does not exist in server. In that case please try again with the closest city.',
+                  'Note: the city used may not work if the data for that particular city does not exist in server. In that case please try again with the nearest city.',
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(
