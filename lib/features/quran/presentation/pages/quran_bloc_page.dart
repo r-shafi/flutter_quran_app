@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/presentation/widgets/app_error_widget.dart';
+import '../../../../core/presentation/widgets/app_loading_indicator.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/ayah.dart';
 import '../../domain/entities/surah.dart';
 import '../bloc/quran_bloc.dart';
@@ -161,26 +164,15 @@ class _QuranViewState extends State<QuranView> {
         },
         builder: (context, state) {
           if (state is QuranLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const AppLoadingIndicator(message: 'Loading Surahs...');
           }
 
           if (state is QuranError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Error: ${state.message}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context
-                          .read<QuranBloc>()
-                          .add(const LoadSurahListEvent());
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+            return AppErrorWidget(
+              message: state.message,
+              onRetry: () {
+                context.read<QuranBloc>().add(const LoadSurahListEvent());
+              },
             );
           }
 
@@ -214,54 +206,104 @@ class _QuranViewState extends State<QuranView> {
   }
 
   Widget _buildSurahTile(BuildContext context, Surah surah, int index) {
+    final isPlaying = lastTrack == index;
+    final theme = Theme.of(context);
+    
     return Padding(
-      padding: const EdgeInsets.only(
-        top: 8.0,
-        left: 8.0,
-        right: 8.0,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
-      child: ListTile(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(
-            Radius.circular(10),
+      child: Card(
+        elevation: isPlaying ? 4 : 1,
+        color: isPlaying
+            ? theme.colorScheme.primary
+            : theme.colorScheme.surface,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
-        ),
-        tileColor: lastTrack == index
-            ? Colors.blueGrey
-            : Colors.black12.withOpacity(0.05),
-        title: Text(
-          surah.englishName,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: lastTrack == index ? Colors.white : Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.borderRadiusMedium),
           ),
-        ),
-        subtitle: Text(
-          surah.englishNameTranslation,
-          style: TextStyle(
-            color: lastTrack == index ? Colors.white70 : Colors.black54,
-          ),
-        ),
-        leading: CircleAvatar(
-          backgroundColor: lastTrack == index ? Colors.white : Colors.blueGrey,
-          child: Text(
-            '${surah.number}',
-            style: TextStyle(
-              color: lastTrack == index ? Colors.blueGrey : Colors.white,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isPlaying
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '${surah.number}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: isPlaying
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
-        ),
-        trailing: Text(
-          surah.name,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: lastTrack == index ? Colors.white : Colors.black,
+          title: Text(
+            surah.englishName,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isPlaying
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
+            ),
           ),
+          subtitle: Text(
+            '${surah.englishNameTranslation} • ${surah.numberOfAyahs} verses',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isPlaying
+                  ? theme.colorScheme.onPrimary.withOpacity(0.8)
+                  : theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                surah.name,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isPlaying
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: isPlaying
+                      ? theme.colorScheme.onPrimary.withOpacity(0.2)
+                      : theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppSpacing.xs),
+                ),
+                child: Text(
+                  surah.revelationType,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isPlaying
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          onTap: () {
+            context.read<QuranBloc>().add(LoadSurahContentEvent(surah.number));
+          },
         ),
-        onTap: () {
-          context.read<QuranBloc>().add(LoadSurahContentEvent(surah.number));
-        },
       ),
     );
   }
