@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quran_app/core/di/injection_container.dart';
-import 'package:quran_app/core/presentation/pages/home.dart';
+import 'package:quran_app/core/presentation/pages/main_navigation.dart';
 import 'package:quran_app/core/theme/app_theme.dart';
 
 void main() async {
@@ -20,7 +20,7 @@ class App extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const Home(),
+      home: const MainNavigationPage(),
     );
   }
 }

@@ -32,15 +32,35 @@ class QuranView extends StatefulWidget {
 
 class _QuranViewState extends State<QuranView> {
   final player = AudioPlayer();
+  final searchController = TextEditingController();
   int lastTrack = 0;
   bool isPlaying = false;
   List<Ayah>? currentAyahs;
+  List<Surah> filteredSurahs = [];
+  String searchQuery = '';
 
   @override
   void dispose() {
     player.stop();
     player.dispose();
+    searchController.dispose();
     super.dispose();
+  }
+
+  void _filterSurahs(List<Surah> surahs, String query) {
+    setState(() {
+      searchQuery = query.toLowerCase();
+      if (query.isEmpty) {
+        filteredSurahs = surahs;
+      } else {
+        filteredSurahs = surahs.where((surah) {
+          return surah.englishName.toLowerCase().contains(searchQuery) ||
+              surah.englishNameTranslation.toLowerCase().contains(searchQuery) ||
+              surah.name.contains(query) ||
+              surah.number.toString().contains(query);
+        }).toList();
+      }
+    });
   }
 
   void audioPlaybackController(int surah, List<Ayah> ayahs) async {
@@ -177,12 +197,49 @@ class _QuranViewState extends State<QuranView> {
           }
 
           if (state is SurahListLoaded) {
-            return ListView.builder(
-              itemCount: state.surahs.length,
-              itemBuilder: (context, index) {
-                final surah = state.surahs[index];
-                return _buildSurahTile(context, surah, index + 1);
-              },
+            // Initialize filtered list if empty
+            if (filteredSurahs.isEmpty && searchQuery.isEmpty) {
+              filteredSurahs = state.surahs;
+            }
+            
+            final surahsToDisplay = searchQuery.isNotEmpty ? filteredSurahs : state.surahs;
+            
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: TextField(
+                    controller: searchController,
+                    onChanged: (query) => _filterSurahs(state.surahs, query),
+                    decoration: InputDecoration(
+                      hintText: 'Search Surahs...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                _filterSurahs(state.surahs, '');
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: surahsToDisplay.isEmpty
+                      ? const Center(
+                          child: Text('No surahs found'),
+                        )
+                      : ListView.builder(
+                          itemCount: surahsToDisplay.length,
+                          itemBuilder: (context, index) {
+                            final surah = surahsToDisplay[index];
+                            return _buildSurahTile(context, surah, surah.number);
+                          },
+                        ),
+                ),
+              ],
             );
           }
 
