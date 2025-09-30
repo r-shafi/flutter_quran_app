@@ -217,49 +217,66 @@ class _SurahDetailViewState extends State<SurahDetailView> {
               // Ayah number and controls
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: isCurrentlyPlaying
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${ayah.numberInSurah}',
-                      style: theme.textTheme.labelLarge?.copyWith(
+                  Semantics(
+                    label: 'Verse ${ayah.numberInSurah}',
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
                         color: isCurrentlyPlaying
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${ayah.numberInSurah}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: isCurrentlyPlaying
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      isCurrentlyPlaying ? Icons.pause : Icons.play_arrow,
-                      color: theme.colorScheme.primary,
+                  Semantics(
+                    label: isCurrentlyPlaying 
+                        ? 'Pause verse ${ayah.numberInSurah}'
+                        : 'Play verse ${ayah.numberInSurah}',
+                    button: true,
+                    child: IconButton(
+                      icon: Icon(
+                        isCurrentlyPlaying ? Icons.pause : Icons.play_arrow,
+                        color: theme.colorScheme.primary,
+                      ),
+                      onPressed: () => playAyah(ayah.audio, ayah.numberInSurah),
                     ),
-                    onPressed: () => playAyah(ayah.audio, ayah.numberInSurah),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.bookmark_outline,
-                      color: theme.colorScheme.primary,
+                  Semantics(
+                    label: 'Bookmark verse ${ayah.numberInSurah}',
+                    button: true,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.bookmark_outline,
+                        color: theme.colorScheme.primary,
+                      ),
+                      onPressed: () {
+                        // TODO: Bookmark ayah
+                      },
                     ),
-                    onPressed: () {
-                      // TODO: Bookmark ayah
-                    },
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.share,
-                      color: theme.colorScheme.primary,
+                  Semantics(
+                    label: 'Share verse ${ayah.numberInSurah}',
+                    button: true,
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.share,
+                        color: theme.colorScheme.primary,
+                      ),
+                      onPressed: () {
+                        // TODO: Share ayah
+                      },
                     ),
-                    onPressed: () {
-                      // TODO: Share ayah
-                    },
                   ),
                 ],
               ),
