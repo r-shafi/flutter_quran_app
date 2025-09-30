@@ -10,6 +10,7 @@ import '../../domain/entities/surah.dart';
 import '../bloc/quran_bloc.dart';
 import '../bloc/quran_event.dart';
 import '../bloc/quran_state.dart';
+import 'surah_detail_page.dart';
 
 class QuranPageBloc extends StatelessWidget {
   const QuranPageBloc({Key? key}) : super(key: key);
@@ -358,6 +359,16 @@ class _QuranViewState extends State<QuranView> {
             ],
           ),
           onTap: () {
+            // Navigate to surah detail page for reading
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SurahDetailPage(surah: surah),
+              ),
+            );
+          },
+          onLongPress: () {
+            // Long press to play audio
             context.read<QuranBloc>().add(LoadSurahContentEvent(surah.number));
           },
         ),
