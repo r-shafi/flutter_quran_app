@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:quran_app/pages/quran.dart';
-import 'package:quran_app/widgets/drawer.dart';
-import 'package:quran_app/widgets/prayer_time.dart';
+import 'package:quran_app/features/quran/presentation/pages/quran.dart';
+import 'package:quran_app/features/settings/presentation/widgets/drawer.dart';
+import 'package:quran_app/features/prayer_times/presentation/widgets/prayer_time.dart';
 
 class Home extends StatelessWidget {
   const Home({Key? key}) : super(key: key);

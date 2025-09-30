@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:quran_app/pages/location_setter.dart';
-import 'package:quran_app/pages/voice_picker.dart';
+import 'package:quran_app/features/settings/presentation/pages/location_setter.dart';
+import 'package:quran_app/features/audio/presentation/pages/voice_picker.dart';
 
 class SettingsDrawer extends StatelessWidget {
   const SettingsDrawer({Key? key}) : super(key: key);

@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import './../models/surah_content.dart';
-import './../models/surah_list.dart';
+import '../../data/models/surah_content.dart';
+import '../../data/models/surah_list.dart';
 
 Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 

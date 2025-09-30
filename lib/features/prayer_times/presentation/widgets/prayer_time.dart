@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import './../models/prayer_time.dart';
+import '../../data/models/prayer_time.dart';
 
 Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
