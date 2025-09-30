@@ -4,6 +4,38 @@ This app is built with Flutter. It is a simple app that shows todays prayer time
 
 All of the data used in this app comes from public API's.
 
+## Architecture
+
+This app follows **Clean Architecture** principles with clear separation of concerns:
+
+- **Presentation Layer**: UI components (pages, widgets)
+- **Domain Layer**: Business logic (entities, use cases, repository interfaces)
+- **Data Layer**: Data sources (API clients, models, repository implementations)
+
+For detailed architecture documentation, see [ARCHITECTURE.md](lib/ARCHITECTURE.md).
+
+### Project Structure
+
+```
+lib/
+├── core/               # Shared utilities and components
+│   ├── constants/     # App-wide constants
+│   ├── theme/         # Theme configuration
+│   ├── utils/         # Utility functions
+│   ├── errors/        # Error handling
+│   ├── network/       # Network utilities
+│   └── presentation/  # Core UI components
+│
+├── features/          # Feature modules
+│   ├── quran/         # Quran reading and audio
+│   ├── prayer_times/  # Prayer times display
+│   ├── audio/         # Audio playback features
+│   ├── bookmarks/     # Bookmarks (future)
+│   └── settings/      # App settings
+│
+└── main.dart
+```
+
 ## Possible Feature Upgrades
 
 - [ ] Notification for prayer times
