@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:quran_app/features/quran/presentation/pages/quran.dart';
+import 'package:quran_app/features/quran/presentation/pages/quran_bloc_page.dart';
 import 'package:quran_app/features/settings/presentation/widgets/drawer.dart';
 import 'package:quran_app/features/prayer_times/presentation/widgets/prayer_time.dart';
 
@@ -28,7 +28,7 @@ class Home extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const Quran(),
+                      builder: (context) => const QuranPageBloc(),
                     ),
                   );
                 },

@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      injectable_generator:injectable_builder:
+        enabled: true
+        options:
+          auto_register: true
+      freezed:freezed:
+        enabled: true
+      json_serializable:
+        enabled: true

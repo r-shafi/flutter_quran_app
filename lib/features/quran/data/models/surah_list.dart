@@ -1,3 +1,5 @@
+import '../../domain/entities/surah.dart';
+
 class SurahListModel {
   SurahListModel({
     required this.code,
@@ -7,13 +9,13 @@ class SurahListModel {
 
   final int code;
   final String status;
-  final List<SurahMetaModel> data;
+  final List<SurahModel> data;
 
   factory SurahListModel.fromMap(Map<String, dynamic> json) => SurahListModel(
         code: json["code"],
         status: json["status"],
-        data: List<SurahMetaModel>.from(
-            json["data"].map((x) => SurahMetaModel.fromMap(x))),
+        data: List<SurahModel>.from(
+            json["data"].map((x) => SurahModel.fromMap(x))),
       );
 
   Map<String, dynamic> toMap() => {
@@ -23,24 +25,24 @@ class SurahListModel {
       };
 }
 
-class SurahMetaModel {
-  SurahMetaModel({
-    required this.number,
-    required this.name,
-    required this.englishName,
-    required this.englishNameTranslation,
-    required this.numberOfAyahs,
-    required this.revelationType,
-  });
+class SurahModel extends Surah {
+  const SurahModel({
+    required int number,
+    required String name,
+    required String englishName,
+    required String englishNameTranslation,
+    required int numberOfAyahs,
+    required String revelationType,
+  }) : super(
+          number: number,
+          name: name,
+          englishName: englishName,
+          englishNameTranslation: englishNameTranslation,
+          numberOfAyahs: numberOfAyahs,
+          revelationType: revelationType,
+        );
 
-  final int number;
-  final String name;
-  final String englishName;
-  final String englishNameTranslation;
-  final int numberOfAyahs;
-  final String revelationType;
-
-  factory SurahMetaModel.fromMap(Map<String, dynamic> json) => SurahMetaModel(
+  factory SurahModel.fromMap(Map<String, dynamic> json) => SurahModel(
         number: json["number"],
         name: json["name"],
         englishName: json["englishName"],
@@ -57,4 +59,13 @@ class SurahMetaModel {
         "numberOfAyahs": numberOfAyahs,
         "revelationType": revelationType,
       };
+  
+  factory SurahModel.fromEntity(Surah surah) => SurahModel(
+        number: surah.number,
+        name: surah.name,
+        englishName: surah.englishName,
+        englishNameTranslation: surah.englishNameTranslation,
+        numberOfAyahs: surah.numberOfAyahs,
+        revelationType: surah.revelationType,
+      );
 }
