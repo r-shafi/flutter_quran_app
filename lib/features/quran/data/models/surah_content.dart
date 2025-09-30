@@ -41,7 +41,7 @@ class Data {
   final String englishNameTranslation;
   final String revelationType;
   final int numberOfAyahs;
-  final List<Ayah> ayahs;
+  final List<AyahModel> ayahs;
   final Edition edition;
 
   factory Data.fromMap(Map<String, dynamic> json) => Data(
@@ -51,7 +51,7 @@ class Data {
         englishNameTranslation: json["englishNameTranslation"],
         revelationType: json["revelationType"],
         numberOfAyahs: json["numberOfAyahs"],
-        ayahs: List<Ayah>.from(json["ayahs"].map((x) => Ayah.fromMap(x))),
+        ayahs: List<AyahModel>.from(json["ayahs"].map((x) => AyahModel.fromMap(x))),
         edition: Edition.fromMap(json["edition"]),
       );
 
@@ -67,34 +67,37 @@ class Data {
       };
 }
 
-class Ayah {
-  Ayah({
-    required this.number,
-    required this.audio,
-    required this.audioSecondary,
-    required this.text,
-    required this.numberInSurah,
-    required this.juz,
-    required this.manzil,
-    required this.page,
-    required this.ruku,
-    required this.hizbQuarter,
-    required this.sajda,
-  });
+import '../../domain/entities/ayah.dart' as entity;
 
-  final int number;
-  final String audio;
+class AyahModel extends entity.Ayah {
   final List<String> audioSecondary;
-  final String text;
-  final int numberInSurah;
-  final int juz;
   final int manzil;
-  final int page;
   final int ruku;
   final int hizbQuarter;
   final bool sajda;
 
-  factory Ayah.fromMap(Map<String, dynamic> json) => Ayah(
+  const AyahModel({
+    required int number,
+    required String audio,
+    required this.audioSecondary,
+    required String text,
+    required int numberInSurah,
+    required int juz,
+    required this.manzil,
+    required int page,
+    required this.ruku,
+    required this.hizbQuarter,
+    required this.sajda,
+  }) : super(
+          number: number,
+          audio: audio,
+          text: text,
+          numberInSurah: numberInSurah,
+          juz: juz,
+          page: page,
+        );
+
+  factory AyahModel.fromMap(Map<String, dynamic> json) => AyahModel(
         number: json["number"],
         audio: json["audio"],
         audioSecondary: List<String>.from(json["audioSecondary"].map((x) => x)),
