@@ -49,6 +49,9 @@ class _PrayerTimeState extends State<PrayerTime> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return FutureBuilder(
       future: _futurePrayerTime,
       builder: (context, AsyncSnapshot<PrayerTimeModel> snapshot) {
@@ -69,7 +72,6 @@ class _PrayerTimeState extends State<PrayerTime> {
                     width: MediaQuery.of(context).size.width,
                     margin: const EdgeInsets.symmetric(horizontal: 5.0),
                     decoration: BoxDecoration(
-                      // color: Colors.blueGrey,
                       image: DecorationImage(
                         image: AssetImage('assets/images/${entry.key}.jpg'),
                         fit: BoxFit.cover,
@@ -85,14 +87,14 @@ class _PrayerTimeState extends State<PrayerTime> {
                       children: [
                         Text(
                           entry.key.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 25,
+                          style: textTheme.headlineSmall?.copyWith(
                             letterSpacing: 1,
-                            color: Colors.white,
+                            color: colorScheme.onInverseSurface,
+                            fontWeight: FontWeight.w600,
                             shadows: [
                               Shadow(
                                 blurRadius: 25.0,
-                                color: Colors.black,
+                                color: colorScheme.scrim,
                               ),
                             ],
                           ),
@@ -103,13 +105,13 @@ class _PrayerTimeState extends State<PrayerTime> {
                               '0000-00-00 ${entry.value.toString().split(' ')[0]}:00',
                             ),
                           ),
-                          style: const TextStyle(
-                            fontSize: 35.0,
-                            color: Colors.white,
+                          style: textTheme.displaySmall?.copyWith(
+                            color: colorScheme.onInverseSurface,
+                            fontWeight: FontWeight.w700,
                             shadows: [
                               Shadow(
                                 blurRadius: 25.0,
-                                color: Colors.black,
+                                color: colorScheme.scrim,
                               ),
                             ],
                           ),
