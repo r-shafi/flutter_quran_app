@@ -16,6 +16,10 @@ dependencies:
   intl: ^0.18.1
   just_audio: ^0.10.5
   shared_preferences: ^2.5.4
+  audio_service: ^0.18.18
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
+  share_plus: ^12.0.1
 
 dev_dependencies:
   flutter_test:
