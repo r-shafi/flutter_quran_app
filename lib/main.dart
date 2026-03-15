@@ -40,12 +40,12 @@ Future<void> main() async {
 
 class App extends StatefulWidget {
   const App({
-    Key? key,
+    super.key,
     required this.initialIsDarkMode,
     required this.initialArabicFontSize,
     required this.initialNotificationsEnabled,
     required this.prefs,
-  }) : super(key: key);
+  });
 
   final bool initialIsDarkMode;
   final double initialArabicFontSize;
