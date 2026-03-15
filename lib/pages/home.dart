@@ -117,6 +117,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final latestBookmark = _bookmarks.isNotEmpty ? _bookmarks.last : null;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = screenWidth < 360 ? AppSpacing.sm : AppSpacing.md;
+    final heroHeight = screenWidth < 380 ? 190.0 : AppSizes.heroHeight;
+    final basmalahSize =
+        screenWidth < 380 ? ArabicSize.minimum - 2 : ArabicSize.minimum;
 
     return Scaffold(
       drawer: SettingsDrawer(
@@ -132,13 +137,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       ),
       body: ScreenBackground(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: AppSpacing.md,
+          ),
           children: [
             AnimatedBuilder(
               animation: _heroRotation,
               builder: (context, child) {
                 return SizedBox(
-                  height: AppSizes.heroHeight,
+                  height: heroHeight,
                   child: AppCard(
                     glow: true,
                     padding: EdgeInsets.zero,
@@ -170,7 +178,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: 'Amiri',
-                                  fontSize: ArabicSize.minimum,
+                                  fontSize: basmalahSize,
                                   height: 2,
                                   color: context.palette.goldPrimary,
                                 ),
@@ -200,7 +208,6 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: AppSpacing.lg),
             AppCard(
-              accentLeft: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -242,7 +249,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     OutlineGoldButton(
-                      label: 'Read Full Surah ->',
+                      label: 'Read Full Surah',
                       onPressed: () => _open(context, const Quran()),
                     ),
                   ],
@@ -252,26 +259,24 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             const SizedBox(height: AppSpacing.lg),
             const SectionHeader(title: 'Quick Access'),
             const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.md,
-              runSpacing: AppSpacing.md,
-              children: [
-                _QuickTile(
+            _QuickAccessGrid(
+              tiles: [
+                _QuickTileData(
                   label: 'Quran',
                   icon: Icons.menu_book_rounded,
                   onTap: () => _open(context, const Quran()),
                 ),
-                _QuickTile(
+                _QuickTileData(
                   label: 'Hadith',
                   icon: Icons.history_edu_rounded,
                   onTap: () => _open(context, const HadithScreen()),
                 ),
-                _QuickTile(
+                _QuickTileData(
                   label: 'Azkar',
                   icon: Icons.volunteer_activism_rounded,
                   onTap: () => _open(context, const AzkarScreen()),
                 ),
-                _QuickTile(
+                _QuickTileData(
                   label: 'Prayer Times',
                   icon: Icons.schedule_rounded,
                   onTap: () => _open(context, const PrayerTimesScreen()),
@@ -324,19 +329,20 @@ class _QuickTile extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onTap,
+    this.height = AppSizes.quickTile,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
     return SizedBox(
-      width: AppSizes.quickTile,
-      height: AppSizes.quickTile,
+      height: height,
       child: PressableCard(
         onTap: onTap,
         child: Column(
@@ -354,6 +360,55 @@ class _QuickTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _QuickTileData {
+  const _QuickTileData({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+}
+
+class _QuickAccessGrid extends StatelessWidget {
+  const _QuickAccessGrid({required this.tiles});
+
+  final List<_QuickTileData> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 380;
+        final tileHeight = isCompact ? 132.0 : AppSizes.quickTile;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: tiles.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            childAspectRatio: 1,
+          ),
+          itemBuilder: (context, index) {
+            final tile = tiles[index];
+            return _QuickTile(
+              label: tile.label,
+              icon: tile.icon,
+              onTap: tile.onTap,
+              height: tileHeight,
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -394,59 +449,63 @@ class _PrayerTimesStripState extends State<_PrayerTimesStrip> {
     final textTheme = Theme.of(context).textTheme;
 
     return SingleChildScrollView(
+      clipBehavior: Clip.none,
       scrollDirection: Axis.horizontal,
-      child: Row(
-        children: List.generate(_data.length, (index) {
-          final item = _data[index];
-          final isNext = index == _nextIndex;
+      child: Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.sm),
+        child: Row(
+          children: List.generate(_data.length, (index) {
+            final item = _data[index];
+            final isNext = index == _nextIndex;
 
-          return Padding(
-            padding: EdgeInsets.only(
-                right: index == _data.length - 1 ? 0 : AppSpacing.md),
-            child: SizedBox(
-              width: AppSizes.prayerCardWidth,
-              height: AppSizes.prayerCardHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  PressableCard(
-                    onTap: widget.onOpenPrayerScreen,
-                    glow: isNext,
-                    backgroundColor: isNext
-                        ? context.palette.bgElevated
-                        : context.palette.bgSurface,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item['name']!,
-                          style: textTheme.labelSmall?.copyWith(
-                            color: context.palette.textSecondary,
+            return Padding(
+              padding: EdgeInsets.only(
+                  right: index == _data.length - 1 ? 0 : AppSpacing.md),
+              child: SizedBox(
+                width: AppSizes.prayerCardWidth,
+                height: AppSizes.prayerCardHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    PressableCard(
+                      onTap: widget.onOpenPrayerScreen,
+                      glow: isNext,
+                      backgroundColor: isNext
+                          ? context.palette.bgElevated
+                          : context.palette.bgSurface,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            item['name']!,
+                            style: textTheme.labelSmall?.copyWith(
+                              color: context.palette.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          item['time']!,
-                          style: textTheme.titleMedium?.copyWith(
-                            color: context.palette.goldPrimary,
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            item['time']!,
+                            style: textTheme.titleMedium?.copyWith(
+                              color: context.palette.goldPrimary,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (isNext)
-                    Positioned(
-                      top: -AppSpacing.sm,
-                      left: AppSpacing.sm,
-                      child: const GoldBadge(label: 'Next', compact: true),
-                    ),
-                ],
+                    if (isNext)
+                      Positioned(
+                        top: -AppSpacing.sm,
+                        left: AppSpacing.sm,
+                        child: const GoldBadge(label: 'Next', compact: true),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
