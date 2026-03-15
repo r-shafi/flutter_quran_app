@@ -9,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:quran_app/config/design_tokens.dart';
 import 'package:quran_app/config/theme.dart';
 import 'package:quran_app/main.dart';
+import 'package:quran_app/models/audio_list.dart';
 import 'package:quran_app/models/surah_content.dart';
 import 'package:quran_app/presentation/widgets/app_card.dart';
 import 'package:quran_app/presentation/widgets/arabic_text.dart';
@@ -87,6 +88,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
   bool _isPreparingPlayback = false;
   bool _isDownloadingSurah = false;
   double _downloadProgress = 0;
+  double _playbackSpeed = 1.0;
 
   final ScrollController _scrollController = ScrollController();
   final Map<int, GlobalKey> _ayahKeys = {};
@@ -94,6 +96,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
   late final AnimationController _pulseController;
   StreamSubscription<int?>? _indexSub;
   StreamSubscription<MediaItem?>? _mediaItemSub;
+  StreamSubscription<PlayerState>? _playerStateSub;
 
   @override
   void initState() {
@@ -110,6 +113,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
   void dispose() {
     _indexSub?.cancel();
     _mediaItemSub?.cancel();
+    _playerStateSub?.cancel();
     _scrollController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -121,6 +125,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
       _loadBookmarks(),
       _loadVoice(),
       _loadReadingPrefs(),
+      _loadPlaybackSpeed(),
     ]);
   }
 
@@ -154,6 +159,25 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
       });
       _scrollCurrentAyahIntoView(ayahNumber);
     });
+
+    _playerStateSub = audioHandler.player.playerStateStream.listen((state) {
+      if (!mounted) return;
+
+      // When playback is fully stopped/idle, clear local reader playback context.
+      if (!state.playing && state.processingState == ProcessingState.idle) {
+        setState(() {
+          _activeSurahInQueue = null;
+          _currentPlayingAyah = -1;
+        });
+      }
+    });
+  }
+
+  bool get _shouldShowAudioBar {
+    return _isPreparingPlayback ||
+        _isDownloadingSurah ||
+        _isCurrentSurahInQueue ||
+        audioHandler.player.playing;
   }
 
   bool get _isCurrentSurahInQueue {
@@ -183,6 +207,30 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
     if (!mounted) return;
     setState(() {
       _selectedVoice = prefs.getString('selectedVoice') ?? _selectedVoice;
+    });
+  }
+
+  Future<void> _loadPlaybackSpeed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final speed = (prefs.getDouble('reading_playback_speed') ?? 1.0)
+        .clamp(0.75, 2.0)
+        .toDouble();
+
+    await audioHandler.player.setSpeed(speed);
+    if (!mounted) return;
+    setState(() {
+      _playbackSpeed = speed;
+    });
+  }
+
+  Future<void> _setPlaybackSpeed(double speed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('reading_playback_speed', speed);
+    await audioHandler.player.setSpeed(speed);
+
+    if (!mounted) return;
+    setState(() {
+      _playbackSpeed = speed;
     });
   }
 
@@ -291,7 +339,10 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
     return File('${folder.path}/$ayahNumber.mp3');
   }
 
-  Future<void> _prepareAndPlaySurah({int startAtAyah = 1}) async {
+  Future<void> _prepareAndPlaySurah({
+    int startAtAyah = 1,
+    bool autoPlay = true,
+  }) async {
     if (widget.surahNumber == null || _isPreparingPlayback) {
       return;
     }
@@ -338,7 +389,9 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
         initialIndex: safeIndex,
         initialPosition: Duration.zero,
       );
-      await audioHandler.play();
+      if (autoPlay) {
+        await audioHandler.play();
+      }
 
       if (!mounted) return;
       setState(() {
@@ -375,6 +428,147 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
     await _prepareAndPlaySurah(
       startAtAyah: _currentPlayingAyah > 0 ? _currentPlayingAyah : 1,
     );
+  }
+
+  Future<List<AudioModel>> _fetchVoiceList() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('voiceList');
+
+    if (cached != null) {
+      final parsed = AudioListModel.fromJson(jsonDecode(cached));
+      return parsed.data;
+    }
+
+    final response = await http.get(
+      Uri.parse('https://api.alquran.cloud/v1/edition/format/audio'),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load voices');
+    }
+
+    await prefs.setString('voiceList', response.body);
+    return AudioListModel.fromJson(jsonDecode(response.body)).data;
+  }
+
+  Future<void> _applyVoice(String voiceIdentifier,
+      {bool fromPlayer = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedVoice', voiceIdentifier);
+
+    if (!mounted) return;
+    setState(() {
+      _selectedVoice = voiceIdentifier;
+    });
+
+    if (fromPlayer && _isCurrentSurahInQueue) {
+      final wasPlaying = audioHandler.player.playing;
+      await _prepareAndPlaySurah(
+        startAtAyah: _currentPlayingAyah > 0 ? _currentPlayingAyah : 1,
+        autoPlay: wasPlaying,
+      );
+    }
+  }
+
+  Future<void> _showSpeedSelector() async {
+    const options = <double>[0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.palette.bgElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpacing.sm),
+              for (final speed in options)
+                ListTile(
+                  leading: Icon(
+                    (_playbackSpeed - speed).abs() < 0.01
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: context.palette.goldPrimary,
+                  ),
+                  title:
+                      Text('${speed.toStringAsFixed(speed == 1.0 ? 1 : 2)}x'),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _setPlaybackSpeed(speed);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showVoiceSelector() async {
+    try {
+      final voices = await _fetchVoiceList();
+      if (!mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: context.palette.bgElevated,
+        shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        ),
+        builder: (sheetContext) {
+          return SafeArea(
+            child: SizedBox(
+              height: MediaQuery.of(sheetContext).size.height * 0.65,
+              child: Column(
+                children: [
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Choose Qari',
+                    style: Theme.of(sheetContext).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  const GoldDivider(opacity: 0.35),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: voices.length,
+                      itemBuilder: (context, index) {
+                        final voice = voices[index];
+                        final selected = voice.identifier == _selectedVoice;
+
+                        return ListTile(
+                          title: Text(voice.englishName),
+                          subtitle: Text(voice.identifier),
+                          trailing: selected
+                              ? Icon(
+                                  Icons.check_circle_rounded,
+                                  color: context.palette.goldPrimary,
+                                )
+                              : null,
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _applyVoice(voice.identifier, fromPlayer: true);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to load qari voices: $e')),
+      );
+    }
   }
 
   Future<void> _shareAyah(ReadingAyah ayah) async {
@@ -647,7 +841,9 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       final isJuz = widget.juzNumber != null;
-      final key = isJuz ? 'juz_reading_v2_' : 'surah_reading_v2_';
+      final key = isJuz
+          ? 'juz_reading_v2_${widget.juzNumber}'
+          : 'surah_reading_v2_${widget.surahNumber}';
 
       String? cached;
       if (prefs.containsKey(key)) {
@@ -900,6 +1096,10 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
   }
 
   Widget _audioBar() {
+    if (!_shouldShowAudioBar) {
+      return const SizedBox.shrink();
+    }
+
     final textTheme = Theme.of(context).textTheme;
 
     return SafeArea(
@@ -936,11 +1136,111 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (!_isCurrentSurahInQueue)
+                  TextButton.icon(
+                    onPressed: _isPreparingPlayback
+                        ? null
+                        : () => _prepareAndPlaySurah(startAtAyah: 1),
+                    icon: const Icon(Icons.play_circle_rounded),
+                    label: const Text('Play Current'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  onTap: _showSpeedSelector,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.palette.bgSurface,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(
+                        color: context.palette.goldMuted.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed.toStringAsFixed(_playbackSpeed == 1.0 ? 1 : 2)}x',
+                      style: textTheme.labelSmall?.copyWith(
+                        color: context.palette.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  _selectedVoice,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: context.palette.textSecondary,
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    onTap: _showVoiceSelector,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.palette.bgSurface,
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        border: Border.all(
+                          color:
+                              context.palette.goldMuted.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        _selectedVoice,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: context.palette.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  onTap: widget.surahNumber == null || _isDownloadingSurah
+                      ? null
+                      : _downloadSurahAudio,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.palette.bgSurface,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(
+                        color: context.palette.goldMuted.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isDownloadingSurah
+                              ? Icons.downloading_rounded
+                              : Icons.download_rounded,
+                          size: AppSpacing.md + AppSpacing.xs,
+                          color: widget.surahNumber == null
+                              ? context.palette.textMuted
+                              : context.palette.goldPrimary,
+                        ),
+                        if (_isDownloadingSurah) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            '${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                            style: textTheme.labelSmall?.copyWith(
+                              color: context.palette.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1097,8 +1397,12 @@ class _SurahReadingScreenState extends State<SurahReadingScreen>
                       Expanded(
                         child: ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md),
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.md,
+                            AppSpacing.md,
+                            AppSpacing.md,
+                          ),
                           itemCount: _surahData!.ayahs.length,
                           itemBuilder: (context, index) =>
                               _ayahCard(_surahData!.ayahs[index]),
