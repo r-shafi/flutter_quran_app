@@ -14,7 +14,7 @@ Future<void> main() async {
   audioHandler = await AudioService.init(
     builder: () => MyAudioHandler(),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.example.quran_app.channel.audio',
+      androidNotificationChannelId: 'com.rshafi.quranapp.channel.audio',
       androidNotificationChannelName: 'Quran Audio Playback',
       androidNotificationOngoing: true,
     ),
