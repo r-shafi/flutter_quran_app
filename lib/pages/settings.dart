@@ -37,6 +37,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _city = 'Sylhet';
   String _country = 'Bangladesh';
   String _qari = 'Default';
+  bool _showTranslationByDefault = false;
+  bool _autoScrollCurrentAyah = true;
+  bool _showInlineAyahActions = false;
 
   @override
   void initState() {
@@ -51,7 +54,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _city = prefs.getString('city') ?? _city;
       _country = prefs.getString('country') ?? _country;
       _qari = prefs.getString('selectedVoice') ?? _qari;
+      _showTranslationByDefault = prefs.getBool('reading_show_translation') ??
+          _showTranslationByDefault;
+      _autoScrollCurrentAyah =
+          prefs.getBool('reading_auto_scroll') ?? _autoScrollCurrentAyah;
+      _showInlineAyahActions = prefs.getBool('reading_show_inline_actions') ??
+          _showInlineAyahActions;
     });
+  }
+
+  Future<void> _setReadingPref(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
   }
 
   Widget _row(
@@ -208,6 +222,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const GoldDivider(),
+            const SizedBox(height: AppSpacing.md),
+            const SectionHeader(title: 'Reading'),
+            const SizedBox(height: AppSpacing.md),
+            _row(
+              context,
+              label: 'Show Translation by Default',
+              trailing: Switch(
+                value: _showTranslationByDefault,
+                onChanged: (value) {
+                  setState(() {
+                    _showTranslationByDefault = value;
+                  });
+                  _setReadingPref('reading_show_translation', value);
+                },
+                activeThumbColor: context.palette.goldPrimary,
+                inactiveTrackColor: context.palette.bgSubtle,
+              ),
+            ),
+            _row(
+              context,
+              label: 'Auto-Scroll Current Ayah',
+              trailing: Switch(
+                value: _autoScrollCurrentAyah,
+                onChanged: (value) {
+                  setState(() {
+                    _autoScrollCurrentAyah = value;
+                  });
+                  _setReadingPref('reading_auto_scroll', value);
+                },
+                activeThumbColor: context.palette.goldPrimary,
+                inactiveTrackColor: context.palette.bgSubtle,
+              ),
+            ),
+            _row(
+              context,
+              label: 'Show Card Quick Actions',
+              trailing: Switch(
+                value: _showInlineAyahActions,
+                onChanged: (value) {
+                  setState(() {
+                    _showInlineAyahActions = value;
+                  });
+                  _setReadingPref('reading_show_inline_actions', value);
+                },
+                activeThumbColor: context.palette.goldPrimary,
+                inactiveTrackColor: context.palette.bgSubtle,
               ),
             ),
           ],

@@ -148,6 +148,10 @@ class _QuranState extends State<Quran> with SingleTickerProviderStateMixin {
               id: ayah.audio,
               album: surahName,
               title: 'Ayah ${ayah.numberInSurah}',
+              extras: {
+                'surahNumber': surah,
+                'ayahNumber': ayah.numberInSurah,
+              },
             ))
         .toList();
 
