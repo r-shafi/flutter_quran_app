@@ -9,7 +9,6 @@ import 'package:quran_app/models/audio_list.dart';
 import 'package:quran_app/presentation/widgets/app_card.dart';
 import 'package:quran_app/presentation/widgets/gold_button.dart';
 import 'package:quran_app/presentation/widgets/lux_app_bar.dart';
-import 'package:quran_app/presentation/widgets/screen_background.dart';
 import 'package:quran_app/presentation/widgets/section_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,9 +44,12 @@ class VoicePicker extends StatefulWidget {
 class _VoicePickerState extends State<VoicePicker> {
   late final Future<AudioListModel> _futureVoiceList;
   final AudioPlayer _player = AudioPlayer();
+  final TextEditingController _searchController = TextEditingController();
 
   String _selectedVoice = '';
   String _pendingVoice = '';
+  String _playingVoice = '';
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -64,18 +66,19 @@ class _VoicePickerState extends State<VoicePicker> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _player.stop();
     _player.dispose();
     super.dispose();
   }
 
   Future<void> _preview(String identifier) async {
-    if (_player.playing && identifier == _pendingVoice) {
+    if (_player.playing && identifier == _playingVoice) {
       await _player.pause();
       return;
     }
 
-    if (!_player.playing && identifier == _pendingVoice) {
+    if (!_player.playing && identifier == _playingVoice) {
       await _player.play();
       return;
     }
@@ -85,7 +88,7 @@ class _VoicePickerState extends State<VoicePicker> {
     }
 
     setState(() {
-      _pendingVoice = identifier;
+      _playingVoice = identifier;
     });
 
     try {
@@ -116,6 +119,95 @@ class _VoicePickerState extends State<VoicePicker> {
     Navigator.pop(context);
   }
 
+  List<AudioModel> _filteredVoices(List<AudioModel> voices) {
+    final normalized = _searchQuery.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return voices;
+    }
+
+    return voices.where((voice) {
+      return voice.englishName.toLowerCase().contains(normalized) ||
+          voice.identifier.toLowerCase().contains(normalized);
+    }).toList();
+  }
+
+  Widget _buildVoiceTile(AudioModel voice, TextTheme textTheme) {
+    final isPending = _pendingVoice == voice.identifier;
+    final isApplied = _selectedVoice == voice.identifier;
+    final isPlaying = _playingVoice == voice.identifier && _player.playing;
+
+    return PressableCard(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      accentLeft: isPending,
+      onTap: () {
+        setState(() {
+          _pendingVoice = voice.identifier;
+        });
+      },
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  voice.englishName,
+                  style: textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  isApplied ? 'Current voice' : 'Tap to select',
+                  style: textTheme.labelSmall?.copyWith(
+                    color: isApplied
+                        ? context.palette.goldPrimary
+                        : context.palette.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: isPlaying ? 'Pause preview' : 'Play preview',
+            onPressed: () => _preview(voice.identifier),
+            icon: Icon(
+              isPlaying
+                  ? Icons.pause_circle_filled_rounded
+                  : Icons.play_circle_fill_rounded,
+              color: isPlaying
+                  ? context.palette.goldPrimary
+                  : context.palette.goldMuted,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          AnimatedContainer(
+            duration: AppDurations.pressScale,
+            width: AppSpacing.lg,
+            height: AppSpacing.lg,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isPending
+                    ? context.palette.goldPrimary
+                    : context.palette.textMuted,
+              ),
+              color: isPending
+                  ? context.palette.goldPrimary
+                  : AppColorValues.transparent,
+            ),
+            child: isPending
+                ? Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: context.palette.bgDeep,
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -125,72 +217,140 @@ class _VoicePickerState extends State<VoicePicker> {
         title: Text('Voice Picker'),
         showBack: true,
       ),
-      body: ScreenBackground(
-        child: FutureBuilder<AudioListModel>(
-          future: _futureVoiceList,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              if (snapshot.hasError) {
-                return Center(child: Text('${snapshot.error}'));
-              }
-              return const Center(child: CircularProgressIndicator());
+      body: FutureBuilder<AudioListModel>(
+        future: _futureVoiceList,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            if (snapshot.hasError) {
+              return Center(child: Text('${snapshot.error}'));
             }
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            return Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                children: [
-                  const SectionHeader(title: 'Choose Reciter'),
-                  const SizedBox(height: AppSpacing.md),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: snapshot.data!.data.length,
-                      itemBuilder: (context, index) {
-                        final voice = snapshot.data!.data[index];
-                        final selected = _pendingVoice == voice.identifier;
+          final voices = _filteredVoices(snapshot.data!.data);
+          final selectedVoiceName = snapshot.data!.data
+              .where((voice) => voice.identifier == _pendingVoice)
+              .map((voice) => voice.englishName)
+              .cast<String?>()
+              .firstWhere(
+                (name) => name != null,
+                orElse: () => null,
+              );
 
-                        return PressableCard(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                          accentLeft: selected,
-                          onTap: () => _preview(voice.identifier),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  voice.englishName,
-                                  style: textTheme.titleMedium,
-                                ),
-                              ),
-                              Container(
-                                width: AppSpacing.md,
-                                height: AppSpacing.md,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: selected
-                                        ? context.palette.goldPrimary
-                                        : context.palette.textMuted,
+          return Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    children: [
+                      const SectionHeader(title: 'Choose Reciter'),
+                      const SizedBox(height: AppSpacing.md),
+                      AppCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Search by reciter name',
+                            hintStyle: textTheme.bodyMedium?.copyWith(
+                              color: context.palette.textMuted,
+                            ),
+                            icon: Icon(
+                              Icons.search_rounded,
+                              color: context.palette.goldMuted,
+                            ),
+                            suffixIcon: _searchQuery.isEmpty
+                                ? null
+                                : IconButton(
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                    icon: Icon(
+                                      Icons.close_rounded,
+                                      color: context.palette.textMuted,
+                                    ),
                                   ),
-                                  color: selected
-                                      ? context.palette.goldPrimary
-                                      : AppColorValues.transparent,
-                                ),
-                              ),
-                            ],
                           ),
-                        );
-                      },
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Expanded(
+                        child: voices.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No reciters match your search.',
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: context.palette.textMuted,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: voices.length,
+                                itemBuilder: (context, index) {
+                                  return _buildVoiceTile(
+                                    voices[index],
+                                    textTheme,
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                decoration: BoxDecoration(
+                  color: context.palette.bgDeep,
+                  border: Border(
+                    top: BorderSide(
+                      color: context.palette.goldMuted.withValues(alpha: 0.2),
                     ),
                   ),
-                  GoldButton(
-                    label: 'Confirm Selection',
-                    onPressed: _pendingVoice.isEmpty ? null : _confirmSelection,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selectedVoiceName == null
+                            ? 'No reciter selected yet'
+                            : 'Selected: $selectedVoiceName',
+                        style: textTheme.labelSmall?.copyWith(
+                          color: context.palette.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      GoldButton(
+                        label: 'Confirm Selection',
+                        onPressed:
+                            _pendingVoice.isEmpty ? null : _confirmSelection,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }
