@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocationSetter extends StatefulWidget {
-  const LocationSetter({Key? key}) : super(key: key);
+  const LocationSetter({super.key});
 
   @override
   State<LocationSetter> createState() => _LocationSetterState();

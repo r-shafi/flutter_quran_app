@@ -29,7 +29,7 @@ Future<AudioListModel> fetchVoiceList() async {
 }
 
 class VoicePicker extends StatefulWidget {
-  const VoicePicker({Key? key}) : super(key: key);
+  const VoicePicker({super.key});
 
   @override
   State<VoicePicker> createState() => _VoicePickerState();
