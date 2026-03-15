@@ -1,0 +1,28 @@
+Categories:
+  - Religion
+
+License: MIT
+
+AutoName: Quran App
+
+RepoType: git
+Repo: https://github.com/r-shafi/flutter_quran_app
+
+Builds:
+  - versionName: 1.6.0
+    versionCode: 1
+    commit: v1.6.0
+    subdir: .
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-17-jdk
+    init:
+      - flutter pub get
+    build:
+      - flutter build apk --release --split-per-abi
+    output: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 1.6.0
+CurrentVersionCode: 1

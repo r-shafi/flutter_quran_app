@@ -1,7 +1,6 @@
 # Flutter Quran App
 
 This app is built with Flutter. It is a simple app that shows todays prayer times and can be used to play Quran recitations.
-
 All of the data used in this app comes from public API's.
 
 ## Possible Feature Upgrades
@@ -24,28 +23,14 @@ All of the data used in this app comes from public API's.
 
 ## Releases
 
-This project uses a tag-based GitHub Actions release workflow at `.github/workflows/release.yml`.
+`pubspec.yaml` uses the format `version: MAJOR.MINOR.PATCH+BUILD`. Example: `version: 1.7.0+7`
 
-### Versioning
+Rules:
 
-- Use tags in `vMAJOR.MINOR.PATCH` format (example: `v1.7.0`).
-- Before creating the tag, update `version:` in `pubspec.yaml` to match the same semantic version.
-- Keep incrementing the build number manually using `+N` (example: `1.7.0+7`, then `1.7.1+8`).
-
-### Release Steps
-
-1. Update `version:` in `pubspec.yaml`.
-2. Commit and push the version change.
-3. Create a tag, for example: `git tag v1.7.0`.
-4. Push the tag: `git push origin v1.7.0`.
-5. GitHub Actions will run the release workflow automatically.
-
-### What the Workflow Does
-
-- Runs `flutter pub get`.
-- Runs `flutter analyze --fatal-warnings`.
-- Builds release APKs with `flutter build apk --release --split-per-abi`.
-- Uploads and publishes these APKs to the GitHub Release:
-  - `app-arm64-v8a-release.apk`
-  - `app-armeabi-v7a-release.apk`
-  - `app-x86_64-release.apk`
+- `MAJOR.MINOR.PATCH` is the human-readable version shown in the app and on F-Droid.
+- `BUILD` (the number after `+`) is the `versionCode` in Android — it must increment by exactly 1 with every release. It must never decrease.
+- To release a new version:
+  1. Increment `MAJOR.MINOR.PATCH` per semantic versioning.
+  2. Increment the build number by 1.
+  3. Commit with message: `chore: bump version to 1.7.0+7`
+  4. Tag: `git tag v1.7.0 && git push origin v1.7.0`

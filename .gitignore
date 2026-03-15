@@ -45,3 +45,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Signing credentials — never commit
+android/key.properties
+*.jks
+*.keystore
+
+# Build outputs
+build/
+*.apk
+*.aab
+android/keystore_b64.secret

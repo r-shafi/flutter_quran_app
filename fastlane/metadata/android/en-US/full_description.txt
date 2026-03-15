@@ -1,0 +1,8 @@
+Read and listen to the Holy Quran on your device without limits or ads.
+
+Quran App offers a clean, distraction-free environment to engage with the Quran, featuring:
+- High-quality audio recitation with multiple renowned Qaris.
+- Accurate prayer times based on your current location.
+- comprehensive Azkar collection for daily supplications.
+- Full offline caching, so you can read and listen even without an internet connection.
+- 100% Free and Open Source (FOSS) with absolutely no tracking or advertisements.
