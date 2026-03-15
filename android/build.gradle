@@ -1,16 +1,3 @@
-buildscript {
-    ext.kotlin_version = '1.6.10'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
 allprojects {
     repositories {
         google()
@@ -26,6 +13,23 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+subprojects { project ->
+    project.plugins.withId("com.android.application") {
+        project.android {
+            if (namespace == null) {
+                namespace project.group
+            }
+        }
+    }
+    project.plugins.withId("com.android.library") {
+        project.android {
+            if (namespace == null) {
+                namespace project.group
+            }
+        }
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.layout.buildDirectory
 }
