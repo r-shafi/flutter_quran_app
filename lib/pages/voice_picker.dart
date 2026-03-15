@@ -87,11 +87,16 @@ class _VoicePickerState extends State<VoicePicker> {
         "https://cdn.islamic.network/quran/audio/128/$identifier/262.mp3",
       );
     } catch (e) {
+      final colorScheme = Theme.of(context).colorScheme;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.blueGrey,
+        SnackBar(
+          backgroundColor: colorScheme.errorContainer,
           content: Text(
             'Something went wrong! Try Selecting Another Voice',
+            style: TextStyle(
+              color: colorScheme.onErrorContainer,
+            ),
           ),
         ),
       );
@@ -103,6 +108,9 @@ class _VoicePickerState extends State<VoicePicker> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Qari Voice'),
@@ -125,18 +133,18 @@ class _VoicePickerState extends State<VoicePicker> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: selectedVoice == voice.identifier
-                            ? Colors.blueGrey
-                            : Colors.black12,
+                            ? colorScheme.primaryContainer
+                            : colorScheme.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Center(
                         child: Text(
                           voice.englishName,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: textTheme.bodyLarge?.copyWith(
                             color: selectedVoice == voice.identifier
-                                ? Colors.white
-                                : Colors.black,
+                                ? colorScheme.onPrimaryContainer
+                                : colorScheme.onSurface,
                           ),
                         ),
                       ),

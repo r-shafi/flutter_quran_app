@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LocationSetter extends StatefulWidget {
-  LocationSetter({Key? key}) : super(key: key);
+  const LocationSetter({Key? key}) : super(key: key);
 
   @override
   State<LocationSetter> createState() => _LocationSetterState();
@@ -29,12 +29,15 @@ class _LocationSetterState extends State<LocationSetter> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Location Setter'),
         centerTitle: true,
       ),
-      backgroundColor: Colors.grey[500],
+      backgroundColor: colorScheme.surfaceContainer,
       body: Center(
         child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -59,8 +62,9 @@ class _LocationSetterState extends State<LocationSetter> {
                   controller: _countryController,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Note: the city used may not work if the data for that particular city does not exist in server. In that case please try again with the nearest city.',
+                  style: textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton(

@@ -4,12 +4,33 @@ import 'package:quran_app/widgets/drawer.dart';
 import 'package:quran_app/widgets/prayer_time.dart';
 
 class Home extends StatelessWidget {
-  const Home({Key? key}) : super(key: key);
+  const Home({
+    Key? key,
+    required this.isDarkMode,
+    required this.arabicFontSize,
+    required this.onThemeModeChanged,
+    required this.onArabicFontSizeChanged,
+  }) : super(key: key);
+
+  final bool isDarkMode;
+  final double arabicFontSize;
+  final ValueChanged<bool> onThemeModeChanged;
+  final ValueChanged<double> onArabicFontSizeChanged;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      drawer: const SafeArea(child: SettingsDrawer()),
+      drawer: SafeArea(
+        child: SettingsDrawer(
+          isDarkMode: isDarkMode,
+          arabicFontSize: arabicFontSize,
+          onThemeModeChanged: onThemeModeChanged,
+          onArabicFontSizeChanged: onArabicFontSizeChanged,
+        ),
+      ),
       appBar: AppBar(
         title: const Text('Quran App'),
         centerTitle: true,
@@ -53,9 +74,9 @@ class Home extends StatelessWidget {
                           ),
                           gradient: LinearGradient(
                             colors: [
-                              Colors.black.withOpacity(0.8),
-                              Colors.black.withOpacity(0.3),
-                              Colors.black.withOpacity(0.01),
+                              colorScheme.scrim.withOpacity(0.8),
+                              colorScheme.scrim.withOpacity(0.3),
+                              colorScheme.scrim.withOpacity(0.01),
                             ],
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
@@ -65,11 +86,11 @@ class Home extends StatelessWidget {
                           vertical: 30,
                           horizontal: 20,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Quran',
-                          style: TextStyle(
-                            fontSize: 30,
-                            color: Colors.white,
+                          style: textTheme.headlineMedium?.copyWith(
+                            color: colorScheme.onInverseSurface,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),

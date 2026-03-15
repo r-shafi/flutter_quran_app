@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:quran_app/config/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import './../models/surah_content.dart';
@@ -124,6 +125,10 @@ class _QuranState extends State<Quran> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final arabicTextTheme = Theme.of(context).extension<ArabicTextTheme>();
+
     return Scaffold(
       bottomNavigationBar: BottomAppBar(
         child: isPlaying || lastTrack != 0
@@ -173,66 +178,82 @@ class _QuranState extends State<Quran> {
               )
             : null,
       ),
-      appBar: AppBar(
-        title: const Text('Quran Audio'),
-        centerTitle: true,
-      ),
       body: FutureBuilder(
         future: _futureSurahList,
         builder: (context, AsyncSnapshot<SurahListModel> snapshot) {
           if (snapshot.hasData) {
-            return ListView.builder(
-              itemCount: snapshot.data!.data.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(
-                    top: 8.0,
-                    left: 8.0,
-                    right: 8.0,
-                  ),
-                  child: ListTile(
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(10),
-                      ),
-                    ),
-                    tileColor: lastTrack == index + 1
-                        ? Colors.blueGrey
-                        : Colors.black12.withOpacity(0.05),
-                    title: Text(
-                      snapshot.data!.data[index].englishName,
-                      style: TextStyle(
-                        color: lastTrack == index + 1
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    ),
-                    subtitle: Text(
-                      snapshot.data!.data[index].name,
-                      style: TextStyle(
-                        color: lastTrack == index + 1
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    ),
-                    trailing: IconButton(
-                      onPressed: () {
-                        audioPlaybackController(
-                          snapshot.data!.data[index].number,
+            return CustomScrollView(
+              slivers: [
+                const SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  pinned: false,
+                  title: Text('Quran Audio'),
+                  centerTitle: true,
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(8),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final isSelected = lastTrack == index + 1;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: ListTile(
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                            ),
+                            tileColor: isSelected
+                                ? colorScheme.primaryContainer
+                                : colorScheme.surfaceContainerLow,
+                            title: Text(
+                              snapshot.data!.data[index].englishName,
+                              style: textTheme.titleMedium?.copyWith(
+                                color: isSelected
+                                    ? colorScheme.onPrimaryContainer
+                                    : colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              snapshot.data!.data[index].name,
+                              style: (arabicTextTheme?.ayahStyle ??
+                                      textTheme.titleMedium ??
+                                      const TextStyle())
+                                  .copyWith(
+                                color: isSelected
+                                    ? colorScheme.onPrimaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              onPressed: () {
+                                audioPlaybackController(
+                                  snapshot.data!.data[index].number,
+                                );
+                              },
+                              icon: Icon(
+                                lastTrack == snapshot.data!.data[index].number
+                                    ? isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow
+                                    : Icons.play_arrow,
+                                color: isSelected
+                                    ? colorScheme.onPrimaryContainer
+                                    : colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
                         );
                       },
-                      icon: Icon(
-                        lastTrack == snapshot.data!.data[index].number
-                            ? isPlaying
-                                ? Icons.pause
-                                : Icons.play_arrow
-                            : Icons.play_arrow,
-                        color: lastTrack == index + 1 ? Colors.white : null,
-                      ),
+                      childCount: snapshot.data!.data.length,
                     ),
                   ),
-                );
-              },
+                ),
+              ],
             );
           } else if (snapshot.hasError) {
             return Center(
