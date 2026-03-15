@@ -1,40 +1,43 @@
 import 'dart:convert';
+
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
+import 'package:quran_app/config/design_tokens.dart';
 import 'package:quran_app/config/theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:quran_app/main.dart';
+import 'package:quran_app/models/surah_content.dart';
+import 'package:quran_app/models/surah_list.dart';
 import 'package:quran_app/pages/surah_reading.dart';
-import 'package:quran_app/main.dart'; // audioHandler
-import 'package:audio_service/audio_service.dart';
+import 'package:quran_app/presentation/widgets/app_card.dart';
+import 'package:quran_app/presentation/widgets/gold_badge.dart';
+import 'package:quran_app/presentation/widgets/gold_divider.dart';
+import 'package:quran_app/presentation/widgets/gold_icon_button.dart';
+import 'package:quran_app/presentation/widgets/screen_background.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import './../models/surah_content.dart';
-import './../models/surah_list.dart';
-
-Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 
 Future<SurahListModel> fetchSurahList() async {
-  final SharedPreferences prefs = await _prefs;
-  final String? surahList = prefs.getString('surahList');
-
-  if (surahList != null) {
-    return SurahListModel.fromMap(jsonDecode(surahList));
+  final prefs = await _prefs;
+  final cache = prefs.getString('surahList');
+  if (cache != null) {
+    return SurahListModel.fromMap(jsonDecode(cache));
   }
 
-  final response = await http.get(
-    Uri.parse('https://api.alquran.cloud/v1/surah'),
-  );
-
-  if (response.statusCode == 200) {
-    prefs.setString('surahList', response.body);
-    return SurahListModel.fromMap(json.decode(response.body));
-  } else {
-    throw Exception('Failed to load data!');
+  final response =
+      await http.get(Uri.parse('https://api.alquran.cloud/v1/surah'));
+  if (response.statusCode != 200) {
+    throw Exception('Failed to load Surah list');
   }
+
+  await prefs.setString('surahList', response.body);
+  return SurahListModel.fromMap(jsonDecode(response.body));
 }
 
 Future<SurahContentModel> fetchSurahContent(int id) async {
-  String voice = await _prefs.then((SharedPreferences prefs) {
+  final voice = await _prefs.then((prefs) {
     return prefs.getString('selectedVoice') ?? 'ar.ahmedajamy';
   });
 
@@ -42,11 +45,11 @@ Future<SurahContentModel> fetchSurahContent(int id) async {
     Uri.parse('https://api.alquran.cloud/v1/surah/$id/$voice'),
   );
 
-  if (response.statusCode == 200) {
-    return SurahContentModel.fromMap(json.decode(response.body));
-  } else {
-    throw Exception('Failed to load data!');
+  if (response.statusCode != 200) {
+    throw Exception('Failed to load Surah content');
   }
+
+  return SurahContentModel.fromMap(jsonDecode(response.body));
 }
 
 class Quran extends StatefulWidget {
@@ -56,75 +59,90 @@ class Quran extends StatefulWidget {
   State<Quran> createState() => _QuranState();
 }
 
-class _QuranState extends State<Quran> {
-  late Future<SurahListModel> _futureSurahList;
-  List<int> _favoriteSurahs = [];
-  String _searchQuery = '';
-  bool _filterFavorites = false;
-
-  int lastTrack = 0;
-  bool isPlaying = false;
-
+class _QuranState extends State<Quran> with SingleTickerProviderStateMixin {
+  late final Future<SurahListModel> _futureSurahList;
+  final List<int> _favoriteSurahs = [];
   final TextEditingController _searchController = TextEditingController();
+  late final AnimationController _listAnimationController;
+
+  String _searchQuery = '';
+  bool _isSearching = false;
+  int _lastTrack = 0;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
     _futureSurahList = fetchSurahList();
+    _listAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
     _loadFavorites();
 
     audioHandler.player.playerStateStream.listen((state) {
-      if (mounted) {
-        setState(() {
-          isPlaying = state.playing;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = state.playing;
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _listAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadFavorites() async {
     final prefs = await SharedPreferences.getInstance();
+    final list =
+        (prefs.getStringList('favoriteSurahs') ?? []).map(int.parse).toList();
+    if (!mounted) return;
     setState(() {
-      _favoriteSurahs =
-          (prefs.getStringList('favoriteSurahs') ?? []).map(int.parse).toList();
+      _favoriteSurahs.clear();
+      _favoriteSurahs.addAll(list);
     });
   }
 
-  Future<void> _toggleFavorite(int num) async {
+  Future<void> _toggleFavorite(int surahNumber) async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      if (_favoriteSurahs.contains(num)) {
-        _favoriteSurahs.remove(num);
+      if (_favoriteSurahs.contains(surahNumber)) {
+        _favoriteSurahs.remove(surahNumber);
       } else {
-        _favoriteSurahs.add(num);
+        _favoriteSurahs.add(surahNumber);
       }
     });
+
     await prefs.setStringList(
-        'favoriteSurahs', _favoriteSurahs.map((e) => e.toString()).toList());
+      'favoriteSurahs',
+      _favoriteSurahs.map((e) => e.toString()).toList(),
+    );
   }
 
   Future<void> audioPlaybackController(int surah, String surahName) async {
-    if (audioHandler.player.playing && lastTrack == surah) {
+    if (audioHandler.player.playing && _lastTrack == surah) {
       await audioHandler.pause();
       return;
     }
 
-    if (!audioHandler.player.playing && lastTrack == surah) {
+    if (!audioHandler.player.playing && _lastTrack == surah) {
       await audioHandler.play();
       return;
     }
 
-    if (audioHandler.player.playing && lastTrack != surah) {
+    if (audioHandler.player.playing && _lastTrack != surah) {
       await audioHandler.stop();
     }
 
     setState(() {
-      lastTrack = surah;
-      isPlaying = true;
+      _lastTrack = surah;
+      _isPlaying = true;
     });
 
     final content = await fetchSurahContent(surah);
-
     final items = content.data.ayahs
         .map((ayah) => MediaItem(
               id: ayah.audio,
@@ -134,264 +152,353 @@ class _QuranState extends State<Quran> {
         .toList();
 
     await audioHandler.updateQueue(items);
-
-    final playlist = ConcatenatingAudioSource(
-      children: items.map((i) => AudioSource.uri(Uri.parse(i.id))).toList(),
-    );
-
-    await audioHandler.player.setAudioSource(playlist);
+    await audioHandler.player.setAudioSources(
+        items.map((e) => AudioSource.uri(Uri.parse(e.id))).toList());
     await audioHandler.play();
   }
 
-  Widget _buildSurahList(ThemeData theme) {
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final arabicTextTheme = theme.extension<ArabicTextTheme>();
+  Widget _searchTitle() {
+    if (!_isSearching) {
+      return const Text('Quran');
+    }
 
-    return FutureBuilder(
-      future: _futureSurahList,
-      builder: (context, AsyncSnapshot<SurahListModel> snapshot) {
-        if (!snapshot.hasData) {
-          if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
-          }
-          return const Center(child: CircularProgressIndicator());
-        }
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = value.toLowerCase();
+          _listAnimationController
+            ..reset()
+            ..forward();
+        });
+      },
+      cursorColor: context.palette.goldPrimary,
+      style: Theme.of(context).textTheme.titleMedium,
+      decoration: InputDecoration(
+        hintText: 'Search Surahs...',
+        hintStyle: Theme.of(context)
+            .textTheme
+            .bodyMedium
+            ?.copyWith(color: context.palette.textMuted),
+        filled: true,
+        fillColor: context.palette.bgElevated,
+        prefixIcon:
+            Icon(Icons.search_rounded, color: context.palette.goldMuted),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.md,
+        ),
+      ),
+    );
+  }
 
-        var list = snapshot.data!.data;
+  Widget _buildSurahCard(SurahMetaModel surah, int index) {
+    final textTheme = Theme.of(context).textTheme;
+    final isFavorite = _favoriteSurahs.contains(surah.number);
+    final isSelected = _lastTrack == surah.number;
 
-        if (_filterFavorites) {
-          list = list.where((s) => _favoriteSurahs.contains(s.number)).toList();
-        }
+    final stagger =
+        (index > 15 ? 15 : index) * AppDurations.listStaggerStep.inMilliseconds;
+    final start = stagger / AppDurations.screenFade.inMilliseconds / 10;
+    final intervalStart = start.clamp(0, 0.8).toDouble();
+    final curve = CurvedAnimation(
+      parent: _listAnimationController,
+      curve: Interval(intervalStart, 1, curve: Curves.easeOut),
+    );
 
-        if (_searchQuery.isNotEmpty) {
-          list = list
-              .where((s) =>
-                  s.englishName.toLowerCase().contains(_searchQuery) ||
-                  s.name.contains(_searchQuery))
-              .toList();
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(8),
-          itemCount: list.length,
-          itemBuilder: (context, i) {
-            final surah = list[i];
-            final isSelected = lastTrack == surah.number;
-            final isFav = _favoriteSurahs.contains(surah.number);
-
-            return Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: ListTile(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SurahReadingScreen(
-                        surahNumber: surah.number,
-                        surahName: surah.name,
-                        englishName: surah.englishName,
+    return FadeTransition(
+      opacity: curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.12),
+          end: Offset.zero,
+        ).animate(curve),
+        child: Column(
+          children: [
+            PressableCard(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SurahReadingScreen(
+                      surahNumber: surah.number,
+                      surahName: surah.name,
+                      englishName: surah.englishName,
+                    ),
+                  ),
+                );
+              },
+              margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              backgroundColor: isSelected
+                  ? context.palette.bgElevated
+                  : context.palette.bgSurface,
+              child: SizedBox(
+                height: AppSpacing.xxl + AppSpacing.lg,
+                child: Row(
+                  children: [
+                    GoldBadge(label: surah.number.toString()),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            surah.englishName,
+                            style: textTheme.titleMedium,
+                          ),
+                          Text(
+                            surah.name,
+                            style: TextStyle(
+                              fontFamily: 'Amiri',
+                              fontSize: ArabicSize.surahName,
+                              color: context.palette.goldPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${surah.numberOfAyahs} Ayahs',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: context.palette.textMuted,
+                          ),
+                        ),
+                        Text(
+                          'Juz ${((surah.number - 1) ~/ AppSpacing.xs) + 1}',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: context.palette.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    GoldIconButton(
+                      icon: isFavorite
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      onTap: () => _toggleFavorite(surah.number),
+                      isActive: isFavorite,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    GoldIconButton(
+                      icon: isSelected && _isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      onTap: () => audioPlaybackController(
+                          surah.number, surah.englishName),
+                    ),
+                  ],
                 ),
-                tileColor: isSelected
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surfaceContainerLow,
-                leading: IconButton(
-                  icon: Icon(
-                    isFav ? Icons.star : Icons.star_border,
-                    color: isFav ? Colors.amber : colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: () => _toggleFavorite(surah.number),
-                ),
-                title: Text(
-                  surah.englishName,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: isSelected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  surah.name,
-                  style: (arabicTextTheme?.ayahStyle ??
-                          textTheme.titleMedium ??
-                          const TextStyle())
-                      .copyWith(
-                    color: isSelected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                trailing: IconButton(
-                  onPressed: () {
-                    audioPlaybackController(surah.number, surah.englishName);
-                  },
-                  icon: Icon(
-                    isSelected && isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: isSelected
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurfaceVariant,
-                  ),
+              ),
+            ),
+            const GoldDivider(opacity: 0.3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _surahTabView(List<SurahMetaModel> all,
+      {required bool favoritesOnly}) {
+    var list = all;
+
+    if (favoritesOnly) {
+      list = all.where((e) => _favoriteSurahs.contains(e.number)).toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      list = list
+          .where((e) =>
+              e.englishName.toLowerCase().contains(_searchQuery) ||
+              e.name.contains(_searchQuery))
+          .toList();
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      itemCount: list.length,
+      itemBuilder: (context, index) => _buildSurahCard(list[index], index),
+    );
+  }
+
+  Widget _juzTabView() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      itemCount: AppSpacing.xl.toInt() - AppSpacing.sm.toInt(),
+      itemBuilder: (context, index) {
+        final juz = index + 1;
+        return PressableCard(
+          margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SurahReadingScreen(
+                  juzNumber: juz,
+                  surahName: 'Juz $juz',
+                  englishName: 'Juz $juz',
                 ),
               ),
             );
           },
+          child: Row(
+            children: [
+              GoldBadge(label: '$juz', compact: true),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'Juz $juz',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: context.palette.goldMuted),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildJuzList(ThemeData theme) {
-    final colorScheme = theme.colorScheme;
-    final textTheme = theme.textTheme;
+  Widget _audioBar() {
+    if (!_isPlaying && _lastTrack == 0) {
+      return const SizedBox.shrink();
+    }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: 30,
-      itemBuilder: (context, i) {
-        final juz = i + 1;
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: ListTile(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SurahReadingScreen(
-                    juzNumber: juz,
-                    surahName: 'Juz $juz',
-                    englishName: 'Juz $juz',
-                  ),
-                ),
-              );
-            },
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-            tileColor: colorScheme.surfaceContainerLow,
-            title: Text(
-              'Juz $juz',
-              style: textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: context.palette.bgSurface,
+        border: Border(
+          top: BorderSide(
+              color: context.palette.goldMuted,
+              width: AppSizes.dividerThickness),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          GoldIconButton(
+            icon: Icons.skip_previous_rounded,
+            onTap: _lastTrack > 1
+                ? () => audioPlaybackController(
+                    _lastTrack - 1, 'Surah ${_lastTrack - 1}')
+                : null,
           ),
-        );
-      },
+          GoldIconButton(
+            icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            onTap: () async {
+              if (_isPlaying) {
+                await audioHandler.pause();
+              } else {
+                await audioHandler.play();
+              }
+            },
+          ),
+          GoldIconButton(
+            icon: Icons.stop_rounded,
+            onTap: () async {
+              await audioHandler.stop();
+              if (!mounted) return;
+              setState(() {
+                _isPlaying = false;
+                _lastTrack = 0;
+              });
+            },
+          ),
+          GoldIconButton(
+            icon: Icons.skip_next_rounded,
+            onTap: _lastTrack < 114
+                ? () => audioPlaybackController(
+                    _lastTrack + 1, 'Surah ${_lastTrack + 1}')
+                : null,
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
+    final textTheme = Theme.of(context).textTheme;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Quran'),
-          centerTitle: true,
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Surahs'),
-              Tab(text: 'Juz'),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(_filterFavorites ? Icons.star : Icons.star_border),
-              tooltip: 'Filter Favorites',
-              onPressed: () {
-                setState(() {
-                  _filterFavorites = !_filterFavorites;
-                });
-              },
+          leading: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: GoldIconButton(
+              icon: Icons.chevron_left,
+              onTap: () => Navigator.maybePop(context),
             ),
-          ],
-        ),
-        body: Column(
-          children: [
+          ),
+          title: _searchTitle(),
+          actions: [
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) {
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: GoldIconButton(
+                icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
+                onTap: () {
                   setState(() {
-                    _searchQuery = val.toLowerCase();
+                    _isSearching = !_isSearching;
+                    if (!_isSearching) {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    }
                   });
                 },
-                decoration: const InputDecoration(
-                  labelText: 'Search Surah',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildSurahList(t),
-                  _buildJuzList(t),
-                ],
               ),
             ),
           ],
+          bottom: TabBar(
+            indicatorColor: context.palette.goldPrimary,
+            indicatorWeight: AppSizes.tabIndicatorThickness,
+            labelStyle: textTheme.labelLarge,
+            labelColor: context.palette.goldPrimary,
+            unselectedLabelColor: context.palette.textMuted,
+            tabs: const [
+              Tab(text: 'Surah'),
+              Tab(text: 'Juz'),
+              Tab(text: 'Favorites'),
+            ],
+          ),
         ),
-        bottomNavigationBar: BottomAppBar(
-          child: isPlaying || lastTrack != 0
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        if (lastTrack > 1) {
-                          audioPlaybackController(
-                              lastTrack - 1, 'Surah ${lastTrack - 1}');
-                        }
-                      },
-                      icon: const Icon(Icons.skip_previous),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        if (isPlaying) {
-                          await audioHandler.pause();
-                        } else {
-                          await audioHandler.play();
-                        }
-                      },
-                      icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        await audioHandler.stop();
-                        setState(() {
-                          isPlaying = false;
-                          lastTrack = 0;
-                        });
-                      },
-                      icon: const Icon(Icons.stop),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        if (lastTrack < 114) {
-                          audioPlaybackController(
-                              lastTrack + 1, 'Surah ${lastTrack + 1}');
-                        }
-                      },
-                      icon: const Icon(Icons.skip_next),
-                    ),
-                  ],
-                )
-              : null,
+        body: ScreenBackground(
+          child: FutureBuilder<SurahListModel>(
+            future: _futureSurahList,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('${snapshot.error}'));
+                }
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final data = snapshot.data!.data;
+              return TabBarView(
+                children: [
+                  _surahTabView(data, favoritesOnly: false),
+                  _juzTabView(),
+                  _surahTabView(data, favoritesOnly: true),
+                ],
+              );
+            },
+          ),
         ),
+        bottomNavigationBar: _audioBar(),
       ),
     );
   }

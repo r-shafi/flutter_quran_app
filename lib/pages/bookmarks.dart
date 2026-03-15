@@ -1,6 +1,13 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:quran_app/config/design_tokens.dart';
+import 'package:quran_app/config/theme.dart';
 import 'package:quran_app/pages/surah_reading.dart';
+import 'package:quran_app/presentation/widgets/app_card.dart';
+import 'package:quran_app/presentation/widgets/gold_divider.dart';
+import 'package:quran_app/presentation/widgets/lux_app_bar.dart';
+import 'package:quran_app/presentation/widgets/screen_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BookmarksScreen extends StatefulWidget {
@@ -11,7 +18,9 @@ class BookmarksScreen extends StatefulWidget {
 }
 
 class _BookmarksScreenState extends State<BookmarksScreen> {
-  List<Map<String, dynamic>> _bookmarks = [];
+  List<Map<String, dynamic>> _quranBookmarks = [];
+  List<Map<String, dynamic>> _hadithBookmarks = [];
+  int _selectedSegment = 0;
 
   @override
   void initState() {
@@ -21,78 +30,208 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    final b = prefs.getString('bookmarks');
-    if (b != null) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(b));
-      list.sort((a, b) =>
-          (b['timestamp'] as String).compareTo(a['timestamp'] as String));
-      setState(() {
-        _bookmarks = list;
-      });
-    }
+
+    final quran = prefs.getString('bookmarks');
+    final hadith = prefs.getString('bookmarks_hadith');
+
+    final quranList = quran == null
+        ? <Map<String, dynamic>>[]
+        : List<Map<String, dynamic>>.from(jsonDecode(quran));
+    final hadithList = hadith == null
+        ? <Map<String, dynamic>>[]
+        : List<Map<String, dynamic>>.from(jsonDecode(hadith));
+
+    quranList.sort((a, b) =>
+        (b['timestamp'] as String).compareTo(a['timestamp'] as String));
+    hadithList.sort((a, b) =>
+        (b['timestamp'] as String).compareTo(a['timestamp'] as String));
+
+    if (!mounted) return;
+    setState(() {
+      _quranBookmarks = quranList;
+      _hadithBookmarks = hadithList;
+    });
   }
 
-  Future<void> _deleteBookmark(int index) async {
+  Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('bookmarks', jsonEncode(_quranBookmarks));
+    await prefs.setString('bookmarks_hadith', jsonEncode(_hadithBookmarks));
+  }
+
+  void _deleteWithUndo(int index) {
+    final isQuran = _selectedSegment == 0;
+    final removed = isQuran ? _quranBookmarks[index] : _hadithBookmarks[index];
+
     setState(() {
-      _bookmarks.removeAt(index);
+      if (isQuran) {
+        _quranBookmarks.removeAt(index);
+      } else {
+        _hadithBookmarks.removeAt(index);
+      }
     });
-    await prefs.setString('bookmarks', jsonEncode(_bookmarks));
+
+    _persist();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Bookmark deleted'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            setState(() {
+              if (isQuran) {
+                _quranBookmarks.insert(index, removed);
+              } else {
+                _hadithBookmarks.insert(index, removed);
+              }
+            });
+            _persist();
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final activeList =
+        _selectedSegment == 0 ? _quranBookmarks : _hadithBookmarks;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookmarks'),
+      appBar: const LuxAppBar(
+        title: Text('Bookmarks'),
+        showBack: true,
       ),
-      body: _bookmarks.isEmpty
-          ? const Center(child: Text('No bookmarks finding.'))
-          : ListView.builder(
-              itemCount: _bookmarks.length,
-              itemBuilder: (context, index) {
-                final b = _bookmarks[index];
-                return ListTile(
-                  title: Text('${b['englishName']} - Ayah ${b['ayahNumber']}'),
-                  subtitle: Text(b['surahName'] ?? ''),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SurahReadingScreen(
-                          surahNumber: b['surahNumber'],
-                          surahName: b['surahName'] ?? '',
-                          englishName: b['englishName'],
-                          initialAyahNumber: b['ayahNumber'],
+      body: ScreenBackground(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: context.palette.bgElevated,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    _segment('Quran', 0),
+                    _segment('Hadith', 1),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: activeList.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No bookmarks found',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: context.palette.textSecondary,
+                          ),
                         ),
+                      )
+                    : ListView.builder(
+                        itemCount: activeList.length,
+                        itemBuilder: (context, index) {
+                          final item = activeList[index];
+                          return PressableCard(
+                            margin:
+                                const EdgeInsets.only(bottom: AppSpacing.md),
+                            onTap: _selectedSegment == 0
+                                ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => SurahReadingScreen(
+                                          surahNumber: item['surahNumber'],
+                                          surahName: item['surahName'] ?? '',
+                                          englishName: item['englishName'],
+                                          initialAyahNumber: item['ayahNumber'],
+                                        ),
+                                      ),
+                                    ).then((_) => _loadBookmarks());
+                                  }
+                                : null,
+                            child: InkWell(
+                              onLongPress: () => _deleteWithUndo(index),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _selectedSegment == 0
+                                        ? '${item['englishName']} - Ayah ${item['ayahNumber']}'
+                                        : '${item['bookName']} - Hadith ${item['number']}',
+                                    style: textTheme.titleMedium,
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Text(
+                                    _selectedSegment == 0
+                                        ? item['surahName'] ?? ''
+                                        : 'Saved Hadith bookmark',
+                                    style: textTheme.labelSmall?.copyWith(
+                                      color: context.palette.textMuted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      item['timestamp']
+                                              ?.toString()
+                                              .split('T')
+                                              .first ??
+                                          '',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        color: context.palette.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                  const GoldDivider(opacity: 0.3),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ).then((_) => _loadBookmarks());
-                  },
-                  onLongPress: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Bookmark?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      _deleteBookmark(index);
-                    }
-                  },
-                );
-              },
-            ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _segment(String label, int index) {
+    final selected = _selectedSegment == index;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _selectedSegment = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          decoration: BoxDecoration(
+            border: selected
+                ? Border(
+                    bottom: BorderSide(
+                      color: context.palette.goldPrimary,
+                      width: AppSizes.tabIndicatorThickness,
+                    ),
+                  )
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: selected
+                      ? context.palette.goldPrimary
+                      : context.palette.textMuted,
+                ),
+          ),
+        ),
+      ),
     );
   }
 }

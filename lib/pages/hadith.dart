@@ -1,6 +1,17 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:quran_app/config/design_tokens.dart';
+import 'package:quran_app/config/theme.dart';
+import 'package:quran_app/presentation/widgets/app_card.dart';
+import 'package:quran_app/presentation/widgets/arabic_text.dart';
+import 'package:quran_app/presentation/widgets/gold_badge.dart';
+import 'package:quran_app/presentation/widgets/gold_divider.dart';
+import 'package:quran_app/presentation/widgets/gold_icon_button.dart';
+import 'package:quran_app/presentation/widgets/lux_app_bar.dart';
+import 'package:quran_app/presentation/widgets/screen_background.dart';
+import 'package:quran_app/presentation/widgets/section_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HadithScreen extends StatefulWidget {
@@ -25,61 +36,90 @@ class _HadithScreenState extends State<HadithScreen> {
       final res =
           await http.get(Uri.parse('https://api.hadith.gading.dev/books'));
       if (res.statusCode == 200) {
-        final j = jsonDecode(res.body);
+        final payload = jsonDecode(res.body);
+        if (!mounted) return;
         setState(() {
-          _books = j['data'];
+          _books = payload['data'];
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Hadith Books')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _books.length,
-              itemBuilder: (context, index) {
-                final b = _books[index];
-                return ListTile(
-                  title: Text(b['name']),
-                  subtitle: Text('Total Hadith: ${b['available']}'),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HadithListScreen(
-                          bookId: b['id'],
-                          bookName: b['name'],
-                          totalHadith: b['available'],
-                        ),
+      appBar: const LuxAppBar(title: Text('Hadith'), showBack: true),
+      body: ScreenBackground(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  const SectionHeader(title: 'Hadith Collections'),
+                  const SizedBox(height: AppSpacing.md),
+                  ..._books.map((book) {
+                    return PressableCard(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => HadithListScreen(
+                              bookId: book['id'],
+                              bookName: book['name'],
+                              totalHadith: book['available'],
+                            ),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(book['name'],
+                                    style: textTheme.titleMedium),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  '${book['available']} Hadith',
+                                  style: textTheme.labelSmall?.copyWith(
+                                    color: context.palette.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded,
+                              color: context.palette.goldMuted),
+                        ],
                       ),
                     );
-                  },
-                );
-              },
-            ),
+                  }),
+                ],
+              ),
+      ),
     );
   }
 }
 
 class HadithListScreen extends StatefulWidget {
-  final String bookId;
-  final String bookName;
-  final int totalHadith;
-
   const HadithListScreen({
     super.key,
     required this.bookId,
     required this.bookName,
     required this.totalHadith,
   });
+
+  final String bookId;
+  final String bookName;
+  final int totalHadith;
 
   @override
   State<HadithListScreen> createState() => _HadithListScreenState();
@@ -101,18 +141,18 @@ class _HadithListScreenState extends State<HadithListScreen> {
 
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    final b = prefs.getString('bookmarks_hadith');
-    if (b != null) {
-      setState(() {
-        _bookmarkedHadiths = List<Map<String, dynamic>>.from(jsonDecode(b));
-      });
-    }
+    final value = prefs.getString('bookmarks_hadith');
+    if (!mounted || value == null) return;
+    setState(() {
+      _bookmarkedHadiths = List<Map<String, dynamic>>.from(jsonDecode(value));
+    });
   }
 
-  Future<void> _toggleBookmark(dynamic h) async {
+  Future<void> _toggleBookmark(dynamic hadith) async {
     final prefs = await SharedPreferences.getInstance();
     final index = _bookmarkedHadiths.indexWhere(
-        (b) => b['bookId'] == widget.bookId && b['number'] == h['number']);
+      (b) => b['bookId'] == widget.bookId && b['number'] == hadith['number'],
+    );
 
     if (index >= 0) {
       _bookmarkedHadiths.removeAt(index);
@@ -120,13 +160,15 @@ class _HadithListScreenState extends State<HadithListScreen> {
       _bookmarkedHadiths.add({
         'bookId': widget.bookId,
         'bookName': widget.bookName,
-        'number': h['number'],
-        'arab': h['arab'],
-        'translation': h['id'],
+        'number': hadith['number'],
+        'arab': hadith['arab'],
+        'translation': hadith['id'],
         'timestamp': DateTime.now().toIso8601String(),
       });
     }
+
     await prefs.setString('bookmarks_hadith', jsonEncode(_bookmarkedHadiths));
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -142,78 +184,113 @@ class _HadithListScreenState extends State<HadithListScreen> {
       final res = await http.get(Uri.parse(url));
 
       if (res.statusCode == 200) {
-        final j = jsonDecode(res.body);
+        final payload = jsonDecode(res.body);
+        if (!mounted) return;
         setState(() {
-          _hadiths.addAll(j['data']['hadiths']);
+          _hadiths.addAll(payload['data']['hadiths']);
           _rangeStart += 20;
           _rangeEnd += 20;
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.bookName)),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _hadiths.length + 1,
-        itemBuilder: (context, index) {
-          if (index == _hadiths.length) {
-            return ElevatedButton(
-              onPressed: _rangeStart > widget.totalHadith || _isLoading
-                  ? null
-                  : _fetchHadiths,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Load More'),
+      appBar: LuxAppBar(title: Text(widget.bookName), showBack: true),
+      body: ScreenBackground(
+        child: ListView.builder(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          itemCount: _hadiths.length + 1,
+          itemBuilder: (context, index) {
+            if (index == _hadiths.length) {
+              return AppCard(
+                child: TextButton(
+                  onPressed: _rangeStart > widget.totalHadith || _isLoading
+                      ? null
+                      : _fetchHadiths,
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : Text(
+                          'Load More',
+                          style: textTheme.labelLarge?.copyWith(
+                            color: context.palette.goldPrimary,
+                          ),
+                        ),
+                ),
+              );
+            }
+
+            final hadith = _hadiths[index];
+            final isBookmarked = _bookmarkedHadiths.any(
+              (b) =>
+                  b['bookId'] == widget.bookId &&
+                  b['number'] == hadith['number'],
             );
-          }
 
-          final h = _hadiths[index];
-          final isBookmarked = _bookmarkedHadiths.any((b) =>
-              b['bookId'] == widget.bookId && b['number'] == h['number']);
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+            return AppCard(
+              margin: const EdgeInsets.only(bottom: AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Hadith ${h['number']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: Icon(isBookmarked
-                            ? Icons.bookmark
-                            : Icons.bookmark_border),
-                        onPressed: () => _toggleBookmark(h),
+                      const Spacer(),
+                      GoldBadge(label: hadith['number'].toString()),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ArabicText(
+                    hadith['arab'] ?? '',
+                    fontSize: ArabicSize.hadith,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  const GoldDivider(),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    hadith['id'] ?? '',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: context.palette.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Narrator chain',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: context.palette.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GoldIconButton(
+                        icon: isBookmarked
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        onTap: () => _toggleBookmark(hadith),
+                        isActive: isBookmarked,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    h['arab'] ?? '',
-                    textAlign: TextAlign.right,
-                    textDirection: TextDirection.rtl,
-                    style: const TextStyle(fontSize: 22, height: 1.8),
-                  ),
-                  const Divider(height: 32),
-                  Text(h['id'] ?? '', style: const TextStyle(fontSize: 16)),
                 ],
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,48 +1,50 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:quran_app/config/design_tokens.dart';
 import 'package:quran_app/config/theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:quran_app/main.dart';
+import 'package:quran_app/presentation/widgets/app_card.dart';
+import 'package:quran_app/presentation/widgets/arabic_text.dart';
+import 'package:quran_app/presentation/widgets/gold_badge.dart';
+import 'package:quran_app/presentation/widgets/gold_divider.dart';
+import 'package:quran_app/presentation/widgets/gold_icon_button.dart';
+import 'package:quran_app/presentation/widgets/lux_app_bar.dart';
+import 'package:quran_app/presentation/widgets/screen_background.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReadingSurah {
-  final int number;
-  final String name;
-  final String englishName;
-  final int? initialAyahNumber;
-  final List<ReadingAyah> ayahs;
-
   ReadingSurah({
     required this.number,
     required this.name,
     required this.englishName,
-    this.initialAyahNumber,
     required this.ayahs,
   });
+
+  final int number;
+  final String name;
+  final String englishName;
+  final List<ReadingAyah> ayahs;
 }
 
 class ReadingAyah {
-  final int numberInSurah;
-  final String arabicText;
-  final String? translationText;
-  final int number; // Global ayah number
-
   ReadingAyah({
     required this.numberInSurah,
     required this.arabicText,
-    this.translationText,
     required this.number,
+    this.translationText,
   });
+
+  final int numberInSurah;
+  final String arabicText;
+  final String? translationText;
+  final int number;
 }
 
 class SurahReadingScreen extends StatefulWidget {
-  final int? surahNumber;
-  final int? juzNumber;
-  final String surahName;
-  final String englishName;
-  final int? initialAyahNumber;
-
   const SurahReadingScreen({
     super.key,
     this.surahNumber,
@@ -52,40 +54,88 @@ class SurahReadingScreen extends StatefulWidget {
     this.initialAyahNumber,
   });
 
+  final int? surahNumber;
+  final int? juzNumber;
+  final String surahName;
+  final String englishName;
+  final int? initialAyahNumber;
+
   @override
   State<SurahReadingScreen> createState() => _SurahReadingScreenState();
 }
 
-class _SurahReadingScreenState extends State<SurahReadingScreen> {
+class _SurahReadingScreenState extends State<SurahReadingScreen>
+    with SingleTickerProviderStateMixin {
   bool _showTranslation = false;
   ReadingSurah? _surahData;
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _bookmarks = [];
-  final Map<int, GlobalKey> _ayahKeys = {};
+  int _currentPlayingAyah = -1;
+  String _selectedVoice = 'Default Qari';
+
+  late final AnimationController _pulseController;
+  StreamSubscription<int?>? _indexSub;
 
   @override
   void initState() {
     super.initState();
-    _loadSurah();
-    _loadBookmarks();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: AppDurations.ayahPulse,
+    )..repeat(reverse: true);
+    _loadData();
+    _watchAudioIndex();
+  }
+
+  @override
+  void dispose() {
+    _indexSub?.cancel();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadSurah(),
+      _loadBookmarks(),
+      _loadVoice(),
+    ]);
+  }
+
+  void _watchAudioIndex() {
+    _indexSub = audioHandler.player.currentIndexStream.listen((index) {
+      if (!mounted || index == null) return;
+      setState(() {
+        _currentPlayingAyah = index + 1;
+      });
+    });
+  }
+
+  Future<void> _loadVoice() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _selectedVoice = prefs.getString('selectedVoice') ?? _selectedVoice;
+    });
   }
 
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
-    final b = prefs.getString('bookmarks');
-    if (b != null) {
-      setState(() {
-        _bookmarks = List<Map<String, dynamic>>.from(jsonDecode(b));
-      });
-    }
+    final value = prefs.getString('bookmarks');
+    if (!mounted || value == null) return;
+    setState(() {
+      _bookmarks = List<Map<String, dynamic>>.from(jsonDecode(value));
+    });
   }
 
   Future<void> _toggleBookmark(ReadingAyah ayah) async {
     final prefs = await SharedPreferences.getInstance();
-    final index = _bookmarks.indexWhere((b) =>
-        b['surahNumber'] == widget.surahNumber &&
-        b['ayahNumber'] == ayah.numberInSurah);
+    final index = _bookmarks.indexWhere(
+      (b) =>
+          b['surahNumber'] == widget.surahNumber &&
+          b['ayahNumber'] == ayah.numberInSurah,
+    );
 
     if (index >= 0) {
       _bookmarks.removeAt(index);
@@ -100,6 +150,7 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     }
 
     await prefs.setString('bookmarks', jsonEncode(_bookmarks));
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -110,51 +161,53 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     await prefs.setString('lastReadSurahName', widget.englishName);
   }
 
-// _loadSurah replaces for Juz and Surah support
   Future<void> _loadSurah() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isJuz = widget.juzNumber != null;
-      final cacheKey = isJuz ? 'juz_reading_v2_' : 'surah_reading_v2_';
+      final key = isJuz ? 'juz_reading_v2_' : 'surah_reading_v2_';
 
-      String? cachedData;
-      if (prefs.containsKey(cacheKey)) {
-        cachedData = prefs.getString(cacheKey);
+      String? cached;
+      if (prefs.containsKey(key)) {
+        cached = prefs.getString(key);
       }
 
-      if (cachedData != null) {
-        _parseAndSetData(jsonDecode(cachedData), isJuz: isJuz);
-        return;
-      }
-
-      Map<String, dynamic> combinedData = {'data': []};
-
-      if (!isJuz) {
-        final response = await http.get(Uri.parse(
-            'https://api.alquran.cloud/v1/surah/${widget.surahNumber}/editions/quran-uthmani,en.sahih'));
-        if (response.statusCode == 200) {
-          combinedData = jsonDecode(response.body);
-        } else {
-          throw Exception('Failed to load surah');
+      Map<String, dynamic> combinedData;
+      if (cached != null) {
+        combinedData = jsonDecode(cached);
+      } else if (!isJuz) {
+        final response = await http.get(
+          Uri.parse(
+            'https://api.alquran.cloud/v1/surah/${widget.surahNumber}/editions/quran-uthmani,en.sahih',
+          ),
+        );
+        if (response.statusCode != 200) {
+          throw Exception('Failed to load Surah');
         }
+        combinedData = jsonDecode(response.body);
       } else {
-        final resAr = await http.get(Uri.parse(
-            'https://api.alquran.cloud/v1/juz/${widget.juzNumber}/quran-uthmani'));
-        final resEn = await http.get(Uri.parse(
-            'https://api.alquran.cloud/v1/juz/${widget.juzNumber}/en.sahih'));
+        final ar = await http.get(
+          Uri.parse(
+              'https://api.alquran.cloud/v1/juz/${widget.juzNumber}/quran-uthmani'),
+        );
+        final en = await http.get(
+          Uri.parse(
+              'https://api.alquran.cloud/v1/juz/${widget.juzNumber}/en.sahih'),
+        );
 
-        if (resAr.statusCode == 200 && resEn.statusCode == 200) {
-          final arBody = jsonDecode(resAr.body)['data'];
-          final enBody = jsonDecode(resEn.body)['data'];
-          combinedData['data'] = [arBody, enBody];
-        } else {
-          throw Exception('Failed to load juz');
+        if (ar.statusCode != 200 || en.statusCode != 200) {
+          throw Exception('Failed to load Juz');
         }
+
+        combinedData = {
+          'data': [jsonDecode(ar.body)['data'], jsonDecode(en.body)['data']],
+        };
       }
 
-      prefs.setString(cacheKey, jsonEncode(combinedData));
+      await prefs.setString(key, jsonEncode(combinedData));
       _parseAndSetData(combinedData, isJuz: isJuz);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -162,184 +215,374 @@ class _SurahReadingScreenState extends State<SurahReadingScreen> {
     }
   }
 
-  void _parseAndSetData(Map<String, dynamic> data, {bool isJuz = false}) {
+  void _parseAndSetData(Map<String, dynamic> data, {required bool isJuz}) {
     final list = data['data'] as List;
     final arabicEdition =
         list.firstWhere((e) => e['edition']['identifier'] == 'quran-uthmani');
     final tlEdition = list.firstWhere(
-        (e) => e['edition']['identifier'] == 'en.sahih',
-        orElse: () => null);
+      (e) => e['edition']['identifier'] == 'en.sahih',
+      orElse: () => null,
+    );
 
     final ayahs = <ReadingAyah>[];
-    // In juz, 'ayahs' array has surah info inside each ayah
     for (int i = 0; i < arabicEdition['ayahs'].length; i++) {
       final arAyah = arabicEdition['ayahs'][i];
       final tlAyah = tlEdition != null ? tlEdition['ayahs'][i] : null;
-
-      ayahs.add(ReadingAyah(
-        numberInSurah: arAyah['numberInSurah'],
-        arabicText: arAyah['text'],
-        translationText: tlAyah?['text'],
-        number: arAyah['number'],
-      ));
+      ayahs.add(
+        ReadingAyah(
+          numberInSurah: arAyah['numberInSurah'],
+          arabicText: arAyah['text'],
+          translationText: tlAyah?['text'],
+          number: arAyah['number'],
+        ),
+      );
     }
 
+    if (!mounted) return;
     setState(() {
       _surahData = ReadingSurah(
         number: isJuz ? widget.juzNumber! : arabicEdition['number'],
-        name: isJuz ? 'Juz ' : arabicEdition['name'],
+        name: isJuz ? 'Juz' : arabicEdition['name'],
         englishName: widget.englishName,
         ayahs: ayahs,
       );
-      for (var a in ayahs) {
-        _ayahKeys[a.numberInSurah] = GlobalKey();
-      }
       _isLoading = false;
     });
+  }
 
-    if (widget.initialAyahNumber != null &&
-        widget.initialAyahNumber! <= ayahs.length) {
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        final key = _ayahKeys[widget.initialAyahNumber!];
-        if (key != null && key.currentContext != null) {
-          Scrollable.ensureVisible(
-            key.currentContext!,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
-        }
-      });
-    }
+  Widget _ayahCard(ReadingAyah ayah) {
+    final textTheme = Theme.of(context).textTheme;
+    final isBookmarked = _bookmarks.any(
+      (b) =>
+          b['surahNumber'] == widget.surahNumber &&
+          b['ayahNumber'] == ayah.numberInSurah,
+    );
+
+    final isPlaying = _currentPlayingAyah == ayah.numberInSurah;
+
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, _) {
+        final pulseOpacity = 0.5 + (_pulseController.value * 0.5);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border(
+              left: BorderSide(
+                color: isPlaying
+                    ? context.palette.goldPrimary
+                        .withValues(alpha: pulseOpacity)
+                    : AppColorValues.transparent,
+                width: AppSizes.cardAccentWidth,
+              ),
+            ),
+          ),
+          child: AppCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            backgroundColor: isPlaying
+                ? context.palette.bgElevated
+                : context.palette.bgSurface,
+            child: InkWell(
+              onTap: () {
+                _setLastRead(ayah);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Saved as last read')),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Spacer(),
+                      GoldBadge(label: ayah.numberInSurah.toString()),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  ArabicText(
+                    ayah.arabicText,
+                    fontSize: ArabicSize.ayah,
+                  ),
+                  if (_showTranslation && ayah.translationText != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    const GoldDivider(opacity: 0.4),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      ayah.translationText!,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: context.palette.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GoldIconButton(
+                        icon: isBookmarked
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        size: AppSizes.iconButtonSmall,
+                        isActive: isBookmarked,
+                        onTap: () => _toggleBookmark(ayah),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      GoldIconButton(
+                        icon: Icons.share_rounded,
+                        size: AppSizes.iconButtonSmall,
+                        onTap: () {
+                          final text = _showTranslation
+                              ? '${ayah.arabicText}\n\n${ayah.translationText}\n\n- Surah ${widget.englishName}, Ayah ${ayah.numberInSurah}'
+                              : '${ayah.arabicText}\n\n- Surah ${widget.englishName}, Ayah ${ayah.numberInSurah}';
+                          SharePlus.instance.share(ShareParams(text: text));
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _audioBar() {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      height: AppSizes.audioBarHeight,
+      decoration: BoxDecoration(
+        color: context.palette.bgElevated,
+        border: Border(
+          top: BorderSide(
+            color: context.palette.goldMuted,
+            width: AppSizes.dividerThickness,
+          ),
+        ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                _selectedVoice,
+                style: textTheme.labelSmall?.copyWith(
+                  color: context.palette.textSecondary,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<Duration>(
+              stream: audioHandler.player.positionStream,
+              builder: (context, posSnapshot) {
+                final position = posSnapshot.data ?? Duration.zero;
+                final duration = audioHandler.player.duration ?? Duration.zero;
+                final max = duration.inMilliseconds <= 0
+                    ? AppSpacing.xs
+                    : duration.inMilliseconds.toDouble();
+                final value = position.inMilliseconds > max
+                    ? max
+                    : position.inMilliseconds.toDouble();
+
+                return Column(
+                  children: [
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: context.palette.goldPrimary,
+                        inactiveTrackColor: context.palette.bgSubtle,
+                        thumbColor: context.palette.goldPrimary,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: AppSpacing.sm - AppSpacing.xs / 2,
+                        ),
+                      ),
+                      child: Slider(
+                        value: value,
+                        max: max,
+                        onChanged: (newValue) {
+                          audioHandler.player.seek(
+                            Duration(milliseconds: newValue.round()),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          GoldIconButton(
+                            icon: Icons.skip_previous_rounded,
+                            onTap: () => audioHandler.skipToPrevious(),
+                          ),
+                          GoldIconButton(
+                            icon: Icons.replay_10_rounded,
+                            onTap: () {
+                              final back =
+                                  position - const Duration(seconds: 10);
+                              audioHandler.player
+                                  .seek(back.isNegative ? Duration.zero : back);
+                            },
+                          ),
+                          _PlayButton(),
+                          GoldIconButton(
+                            icon: Icons.forward_10_rounded,
+                            onTap: () {
+                              audioHandler.player
+                                  .seek(position + const Duration(seconds: 10));
+                            },
+                          ),
+                          GoldIconButton(
+                            icon: Icons.skip_next_rounded,
+                            onTap: () => audioHandler.skipToNext(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final arabicTextTheme = Theme.of(context).extension<ArabicTextTheme>();
-
     return Scaffold(
-      appBar: AppBar(
+      appBar: LuxAppBar(
         title: Text(widget.englishName),
+        subtitle: Text(widget.surahName),
+        showBack: true,
         actions: [
-          IconButton(
-            icon: Icon(
-              _showTranslation ? Icons.translate : Icons.g_translate,
-              color: _showTranslation ? colorScheme.primary : null,
-            ),
-            tooltip: 'Toggle Translation',
-            onPressed: () {
-              setState(() {
-                _showTranslation = !_showTranslation;
-              });
+          GoldIconButton(
+            icon: _showTranslation
+                ? Icons.translate_rounded
+                : Icons.g_translate_rounded,
+            isActive: _showTranslation,
+            onTap: () => setState(() => _showTranslation = !_showTranslation),
+          ),
+          GoldIconButton(
+            icon: Icons.bookmark_border_rounded,
+            onTap: () {},
+          ),
+          GoldIconButton(
+            icon: Icons.share_rounded,
+            onTap: () {
+              if (_surahData == null) return;
+              SharePlus.instance.share(
+                ShareParams(
+                    text: '${_surahData!.englishName} - ${widget.surahName}'),
+              );
             },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('Error: $_error'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _surahData!.ayahs.length,
-                  itemBuilder: (context, index) {
-                    final ayah = _surahData!.ayahs[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: InkWell(
-                        onTap: () {
-                          _setLastRead(ayah);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Saved as last read'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
+      body: ScreenBackground(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(child: Text('Error: $_error'))
+                : Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: AppCard(
+                          glow: true,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor:
-                                        colorScheme.primaryContainer,
-                                    child: Text(
-                                      ayah.numberInSurah.toString(),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      ayah.arabicText,
-                                      textAlign: TextAlign.right,
-                                      textDirection: TextDirection.rtl,
-                                      style: (arabicTextTheme?.ayahStyle ??
-                                              const TextStyle(fontSize: 24))
-                                          .copyWith(
-                                        height: 1.8,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              const ArabicText(
+                                'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+                                fontSize: ArabicSize.ayahLarge,
+                                textAlign: TextAlign.center,
                               ),
-                              if (_showTranslation &&
-                                  ayah.translationText != null) ...[
-                                const Divider(height: 32),
-                                Text(
-                                  ayah.translationText!,
-                                  style: textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      _bookmarks.any((b) =>
-                                              b['surahNumber'] ==
-                                                  widget.surahNumber &&
-                                              b['ayahNumber'] ==
-                                                  ayah.numberInSurah)
-                                          ? Icons.bookmark
-                                          : Icons.bookmark_border,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => _toggleBookmark(ayah),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.share, size: 20),
-                                    onPressed: () {
-                                      final textToShare = _showTranslation
-                                          ? '${ayah.arabicText}\n\n${ayah.translationText}\n\n- Surah ${widget.englishName}, Ayah ${ayah.numberInSurah}'
-                                          : '${ayah.arabicText}\n\n- Surah ${widget.englishName}, Ayah ${ayah.numberInSurah}';
-                                      Share.share(textToShare);
-                                    },
-                                  ),
-                                ],
-                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              const GoldDivider(),
                             ],
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md),
+                          itemCount: _surahData!.ayahs.length,
+                          itemBuilder: (context, index) =>
+                              _ayahCard(_surahData!.ayahs[index]),
+                        ),
+                      ),
+                    ],
+                  ),
+      ),
+      bottomNavigationBar: _audioBar(),
+    );
+  }
+}
+
+class _PlayButton extends StatefulWidget {
+  @override
+  State<_PlayButton> createState() => _PlayButtonState();
+}
+
+class _PlayButtonState extends State<_PlayButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppDurations.playBreath,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<bool>(
+      stream: audioHandler.player.playingStream,
+      builder: (context, snapshot) {
+        final playing = snapshot.data ?? false;
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final scale = playing ? (1 + (_controller.value * 0.05)) : 1.0;
+            return Transform.scale(
+              scale: scale,
+              child: GoldIconButton(
+                icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                size: AppSizes.playButton,
+                onTap: () async {
+                  if (playing) {
+                    await audioHandler.pause();
+                  } else {
+                    await audioHandler.play();
+                  }
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
