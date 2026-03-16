@@ -195,7 +195,7 @@ class _HadithCategoryScreenState extends State<HadithCategoryScreen> {
     if (value is String) return value.trim();
 
     if (value is Map) {
-      final map = Map<String, dynamic>.from(value as Map);
+      final map = Map<String, dynamic>.from(value);
       final name = (map['title'] ?? map['name'] ?? map['section'] ?? '')
           .toString()
           .trim();
@@ -262,7 +262,7 @@ class _HadithCategoryScreenState extends State<HadithCategoryScreen> {
       for (final raw in hadithsRaw) {
         if (raw is! Map) continue;
 
-        final hadith = Map<String, dynamic>.from(raw as Map);
+        final hadith = Map<String, dynamic>.from(raw);
         final reference = hadith['reference'] is Map
             ? Map<String, dynamic>.from(hadith['reference'] as Map)
             : <String, dynamic>{};
@@ -538,11 +538,12 @@ class _HadithListScreenState extends State<HadithListScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -575,8 +576,9 @@ class _HadithListScreenState extends State<HadithListScreen> {
         _arabicByNumber[hadithNumber] = arabicText;
       });
     } finally {
-      if (!mounted) return;
-      setState(() => _loadingArabicNumbers.remove(hadithNumber));
+      if (mounted) {
+        setState(() => _loadingArabicNumbers.remove(hadithNumber));
+      }
     }
   }
 
