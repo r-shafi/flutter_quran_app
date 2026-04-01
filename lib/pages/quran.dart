@@ -329,44 +329,58 @@ class _QuranState extends State<Quran> with SingleTickerProviderStateMixin {
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      // Performance: Fixed extent prevents layout calculation per item
+      itemExtent: AppSpacing.xxl + AppSpacing.lg + (AppSpacing.sm * 2),
+      // Performance: Don't keep items alive when off-screen
+      addAutomaticKeepAlives: false,
+      // Performance: Pre-cache 5 items ahead
+      cacheExtent: 400.0,
       itemCount: list.length,
-      itemBuilder: (context, index) => _buildSurahCard(list[index], index),
+      itemBuilder: (context, index) => RepaintBoundary(
+        child: _buildSurahCard(list[index], index),
+      ),
     );
   }
 
   Widget _juzTabView() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      // Performance optimizations
+      itemExtent: AppSpacing.xxl + AppSpacing.lg + (AppSpacing.sm * 2),
+      addAutomaticKeepAlives: false,
+      cacheExtent: 400.0,
       itemCount: AppSpacing.xl.toInt() - AppSpacing.sm.toInt(),
       itemBuilder: (context, index) {
         final juz = index + 1;
-        return PressableCard(
-          margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SurahReadingScreen(
-                  juzNumber: juz,
-                  surahName: 'Juz $juz',
-                  englishName: 'Juz $juz',
+        return RepaintBoundary(
+          child: PressableCard(
+            margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SurahReadingScreen(
+                    juzNumber: juz,
+                    surahName: 'Juz $juz',
+                    englishName: 'Juz $juz',
+                  ),
                 ),
-              ),
-            );
-          },
-          child: Row(
-            children: [
-              GoldBadge(label: '$juz', compact: true),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  'Juz $juz',
-                  style: Theme.of(context).textTheme.titleMedium,
+              );
+            },
+            child: Row(
+              children: [
+                GoldBadge(label: '$juz', compact: true),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    'Juz $juz',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded,
-                  color: context.palette.goldMuted),
-            ],
+                Icon(Icons.chevron_right_rounded,
+                    color: context.palette.goldMuted),
+              ],
+            ),
           ),
         );
       },
